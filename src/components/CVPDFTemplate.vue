@@ -8,6 +8,7 @@ interface PersonalData {
   adresse: string
   telefon: string
   email: string
+  photoUrl: string
 }
 
 interface DynamicItem {
@@ -42,6 +43,7 @@ const props = defineProps<{
   kenntnisse: string
   sprachen: string
   interessen: string
+  isDarkMode: boolean
 }>()
 
 const geburtsText = computed(() => {
@@ -77,6 +79,63 @@ const interessenArray = computed(() => {
     .filter((i: string) => i)
 })
 
+// Hilfsfunktion zum Parsen von Datumsangaben
+const parseDate = (dateStr: string): number => {
+  if (!dateStr) return 0
+  // Versuche verschiedene Formate: MM/YYYY, YYYY, oder "heute"/"aktuell"
+  const heute =
+    dateStr.toLowerCase().includes('heute') ||
+    dateStr.toLowerCase().includes('aktuell') ||
+    dateStr.toLowerCase().includes('present')
+  if (heute) return Date.now()
+
+  const parts = dateStr.split(/[\/\-\.]/)
+  if (parts.length === 2) {
+    // MM/YYYY Format
+    const month = parseInt(parts[0])
+    const year = parseInt(parts[1])
+    return new Date(year, month - 1).getTime()
+  } else if (parts.length === 1) {
+    // Nur Jahr
+    const year = parseInt(parts[0])
+    return new Date(year, 0).getTime()
+  }
+  return 0
+}
+
+// Sortierte Listen (neueste zuerst)
+const sortedAusbildungen = computed(() => {
+  return [...props.ausbildungen].sort((a, b) => {
+    const dateA = parseDate(a.dateTo || a.dateFrom)
+    const dateB = parseDate(b.dateTo || b.dateFrom)
+    return dateB - dateA
+  })
+})
+
+const sortedBerufserfahrungen = computed(() => {
+  return [...props.berufserfahrungen].sort((a, b) => {
+    const dateA = parseDate(a.dateTo || a.dateFrom)
+    const dateB = parseDate(b.dateTo || b.dateFrom)
+    return dateB - dateA
+  })
+})
+
+const sortedKurse = computed(() => {
+  return [...props.kurse].sort((a, b) => {
+    const dateA = parseDate(a.datum)
+    const dateB = parseDate(b.datum)
+    return dateB - dateA
+  })
+})
+
+const sortedAuszeichnungen = computed(() => {
+  return [...props.auszeichnungen].sort((a, b) => {
+    const dateA = parseDate(a.datum)
+    const dateB = parseDate(b.datum)
+    return dateB - dateA
+  })
+})
+
 const hasAnyAusbildung = computed(() => {
   return props.ausbildungen.some(
     (item: DynamicItem) =>
@@ -103,10 +162,15 @@ const hasAnyAuszeichnung = computed(() => {
 </script>
 
 <template>
-  <div class="pdf-template">
+  <div class="pdf-template" :class="{ 'light-mode': !isDarkMode }">
     <!-- Header mit Namen -->
     <div class="pdf-header">
-      <h1>{{ personalData.name || 'Ihr Name' }}</h1>
+      <div class="header-content">
+        <div v-if="personalData.photoUrl" class="header-photo">
+          <img :src="personalData.photoUrl" alt="Profilfoto" />
+        </div>
+        <h1>{{ personalData.name || 'Ihr Name' }}</h1>
+      </div>
     </div>
 
     <!-- Zweispalten Layout -->
@@ -171,11 +235,33 @@ const hasAnyAuszeichnung = computed(() => {
 
       <!-- Hauptbereich rechts -->
       <div class="pdf-main">
+        <!-- Ausbildung -->
+        <div v-if="hasAnyAusbildung" class="main-section">
+          <h2>Ausbildung</h2>
+          <div
+            v-for="item in sortedAusbildungen"
+            :key="item.id"
+            class="main-item"
+            v-show="item.title || item.subtitle || item.dateFrom || item.dateTo || item.description"
+          >
+            <div class="main-item-header">
+              <div class="main-item-title-group">
+                <h3 v-if="item.title">{{ item.title }}</h3>
+                <div v-if="item.subtitle" class="main-item-subtitle">{{ item.subtitle }}</div>
+              </div>
+              <div v-if="item.dateFrom || item.dateTo" class="main-item-date">
+                {{ item.dateFrom }}{{ item.dateFrom && item.dateTo ? ' - ' : '' }}{{ item.dateTo }}
+              </div>
+            </div>
+            <div v-if="item.description" class="main-item-description">{{ item.description }}</div>
+          </div>
+        </div>
+
         <!-- Berufserfahrung -->
         <div v-if="hasAnyBerufserfahrung" class="main-section">
           <h2>Berufserfahrung</h2>
           <div
-            v-for="item in berufserfahrungen"
+            v-for="item in sortedBerufserfahrungen"
             :key="item.id"
             class="main-item"
             v-show="item.title || item.subtitle || item.dateFrom || item.dateTo || item.description"
@@ -197,7 +283,7 @@ const hasAnyAuszeichnung = computed(() => {
         <div v-if="hasAnyAusbildung" class="main-section">
           <h2>Ausbildung</h2>
           <div
-            v-for="item in ausbildungen"
+            v-for="item in sortedAusbildungen"
             :key="item.id"
             class="main-item"
             v-show="item.title || item.subtitle || item.dateFrom || item.dateTo || item.description"
@@ -219,7 +305,7 @@ const hasAnyAuszeichnung = computed(() => {
         <div v-if="hasAnyKurs" class="main-section">
           <h2>Kurse & Zertifikate</h2>
           <div
-            v-for="item in kurse"
+            v-for="item in sortedKurse"
             :key="item.id"
             class="main-item"
             v-show="item.title || item.anbieter || item.datum"
@@ -238,7 +324,7 @@ const hasAnyAuszeichnung = computed(() => {
         <div v-if="hasAnyAuszeichnung" class="main-section">
           <h2>Auszeichnungen</h2>
           <div
-            v-for="item in auszeichnungen"
+            v-for="item in sortedAuszeichnungen"
             :key="item.id"
             class="main-item"
             v-show="item.title || item.verliehen || item.datum"
@@ -279,6 +365,33 @@ const hasAnyAuszeichnung = computed(() => {
   margin-bottom: 0;
 }
 
+.light-mode .pdf-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 15mm;
+}
+
+.header-photo {
+  flex-shrink: 0;
+  width: 35mm;
+  height: 35mm;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2mm solid white;
+  background: white;
+}
+
+.header-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .pdf-header h1 {
   margin: 0;
   font-size: 28pt;
@@ -300,6 +413,10 @@ const hasAnyAuszeichnung = computed(() => {
   box-sizing: border-box;
 }
 
+.light-mode .pdf-sidebar {
+  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
 .sidebar-section {
   margin-bottom: 8mm;
 }
@@ -313,6 +430,11 @@ const hasAnyAuszeichnung = computed(() => {
   border-bottom: 2px solid #2c3e50;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.light-mode .sidebar-section h2 {
+  color: #667eea;
+  border-bottom-color: #667eea;
 }
 
 .sidebar-item {
@@ -350,6 +472,11 @@ const hasAnyAuszeichnung = computed(() => {
   font-weight: 500;
 }
 
+.light-mode .sidebar-tag {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
 .sidebar-list {
   display: flex;
   flex-direction: column;
@@ -372,6 +499,10 @@ const hasAnyAuszeichnung = computed(() => {
   font-weight: 700;
 }
 
+.light-mode .sidebar-list-item::before {
+  color: #667eea;
+}
+
 /* Hauptbereich */
 .pdf-main {
   flex: 1;
@@ -390,9 +521,14 @@ const hasAnyAuszeichnung = computed(() => {
   color: #2c3e50;
   margin: 0 0 5mm 0;
   padding-bottom: 2mm;
-  border-bottom: 3px solid #2c3e50;
+  border-bottom: 2.5px solid #2c3e50;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.light-mode .main-section h2 {
+  color: #667eea;
+  border-bottom-color: #667eea;
 }
 
 .main-item {
@@ -434,6 +570,12 @@ const hasAnyAuszeichnung = computed(() => {
   background: #f0f0f0;
   padding: 1mm 3mm;
   border-radius: 2mm;
+}
+
+.light-mode .main-item-date {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+  color: #667eea;
+  font-weight: 700;
 }
 
 .main-item-description {

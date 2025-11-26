@@ -11,6 +11,7 @@ interface PersonalData {
   adresse: string
   telefon: string
   email: string
+  photoUrl: string
 }
 
 interface DynamicItem {
@@ -43,6 +44,7 @@ const personalData = reactive<PersonalData>({
   adresse: '',
   telefon: '',
   email: '',
+  photoUrl: '',
 })
 
 const ausbildungen = ref<DynamicItem[]>([])
@@ -52,6 +54,7 @@ const auszeichnungen = ref<AuszeichnungItem[]>([])
 const kenntnisse = ref('')
 const sprachen = ref('')
 const interessen = ref('')
+const isDarkMode = ref(true)
 
 let ausbildungCounter = 0
 let berufserfahrungCounter = 0
@@ -60,6 +63,27 @@ let auszeichnungenCounter = 0
 
 const cvPreviewRef = ref<HTMLElement | null>(null)
 const cvPdfTemplateRef = ref<HTMLElement | null>(null)
+
+function toggleTheme() {
+  isDarkMode.value = !isDarkMode.value
+}
+
+function handleImageUpload(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+
+  if (file && file.type.startsWith('image/')) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      personalData.photoUrl = e.target?.result as string
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+function removePhoto() {
+  personalData.photoUrl = ''
+}
 
 function addAusbildung() {
   ausbildungen.value.push({
@@ -189,6 +213,38 @@ async function exportPDF() {
       <!-- Form Section -->
       <div class="form-section">
         <h2 class="section-title">Persönliche Daten</h2>
+
+        <!-- Foto Upload -->
+        <div class="form-group photo-upload-section">
+          <label>Profilfoto</label>
+          <div class="photo-upload-container">
+            <div v-if="personalData.photoUrl" class="photo-preview">
+              <img :src="personalData.photoUrl" alt="Profilfoto" />
+              <button
+                type="button"
+                class="btn-remove-photo"
+                @click="removePhoto"
+                title="Foto entfernen"
+              >
+                ✕
+              </button>
+            </div>
+            <div v-else class="photo-upload-placeholder">
+              <label for="photo-upload" class="photo-upload-label">
+                <span class="upload-icon">📷</span>
+                <span>Foto hochladen</span>
+              </label>
+              <input
+                id="photo-upload"
+                type="file"
+                accept="image/*"
+                @change="handleImageUpload"
+                class="photo-input"
+              />
+            </div>
+          </div>
+        </div>
+
         <div class="form-group">
           <label>Name</label>
           <input type="text" v-model="personalData.name" placeholder="Max Mustermann" />
@@ -368,6 +424,8 @@ async function exportPDF() {
           :kenntnisse="kenntnisse"
           :sprachen="sprachen"
           :interessen="interessen"
+          :is-dark-mode="isDarkMode"
+          @toggle-theme="toggleTheme"
         />
       </div>
     </div>
@@ -384,6 +442,7 @@ async function exportPDF() {
         :kenntnisse="kenntnisse"
         :sprachen="sprachen"
         :interessen="interessen"
+        :is-dark-mode="isDarkMode"
       />
     </div>
   </div>
@@ -473,6 +532,102 @@ async function exportPDF() {
 .form-group textarea {
   resize: vertical;
   min-height: 60px;
+}
+
+/* Photo Upload Styles */
+.photo-upload-section {
+  margin-bottom: 20px;
+}
+
+.photo-upload-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.photo-preview {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #667eea;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.btn-remove-photo {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 59, 48, 0.9);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+
+.btn-remove-photo:hover {
+  background: rgba(255, 59, 48, 1);
+  transform: scale(1.1);
+}
+
+.photo-upload-placeholder {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 3px dashed #667eea;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.photo-upload-placeholder:hover {
+  border-color: #5568d3;
+  background: #f0f1f5;
+  transform: scale(1.05);
+}
+
+.photo-upload-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-align: center;
+  padding: 20px;
+}
+
+.upload-icon {
+  font-size: 32px;
+}
+
+.photo-upload-label span:last-child {
+  font-size: 14px;
+  color: #667eea;
+  font-weight: 600;
+}
+
+.photo-input {
+  display: none;
 }
 
 .section-title {

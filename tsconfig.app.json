@@ -1,12 +1,12 @@
 {
   "extends": "@vue/tsconfig/tsconfig.dom.json",
-  "include": ["env.d.ts", "lb-gen/src/**/*rc/*lb-gen/src/**/*.vuen/srlb-gen/src/**/*.ts, "llb-gen/src/**/*.css/*.ts", "lb-gen/src/**/*.css"],
-  "exclude": ["lb-gen/src/**/__tests__/*sts__/*"],
+  "include": ["env.d.ts", "src/**/*", "src/**/*.vue", "src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["src/**/__tests__/*"],
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
 
     "paths": {
-      "@/*": ["lb-gen/src/*src/*"]
+      "@/*": ["./src/*"]
     }
   }
 }
