@@ -12,6 +12,7 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  base: '/lb-gen/', // Ersetzen Sie "repository-name" durch den Namen Ihres Repositories
   build: {
     outDir: 'docs', // Ändert den Build-Output-Ordner auf "docs"
   },
