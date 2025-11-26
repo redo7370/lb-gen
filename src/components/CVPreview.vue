@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, nextTick, watch } from 'vue'
+import { computed, ref } from 'vue'
 
 interface PersonalData {
   name: string
@@ -221,45 +221,6 @@ const hasAnyAuszeichnung = computed(() => {
     (item: AuszeichnungItem) => item.title || item.verliehen || item.datum,
   )
 })
-
-// Content overflow detection
-const previewRef = ref<HTMLElement | null>(null)
-const isCompact = ref(false)
-
-// Check if content fits on one page
-const checkContentHeight = () => {
-  nextTick(() => {
-    if (previewRef.value) {
-      const contentHeight = previewRef.value.scrollHeight
-      const a4Height = 297 * 3.7795275591 // 297mm in pixels (assuming 96 DPI)
-
-      // If content exceeds A4 height, apply compact mode
-      isCompact.value = contentHeight > a4Height
-    }
-  })
-}
-
-// Watch for changes in content
-watch(
-  () => [
-    props.personalData,
-    props.ausbildungen,
-    props.berufserfahrungen,
-    props.kurse,
-    props.auszeichnungen,
-    props.kenntnisse,
-    props.sprachen,
-    props.interessen,
-  ],
-  () => {
-    checkContentHeight()
-  },
-  { deep: true },
-)
-
-onMounted(() => {
-  checkContentHeight()
-})
 </script>
 
 <template>
@@ -289,11 +250,7 @@ onMounted(() => {
           transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
         }"
       >
-        <div
-          class="cv-preview"
-          :class="{ 'light-mode': !isDarkMode, compact: isCompact }"
-          ref="previewRef"
-        >
+        <div class="cv-preview" :class="{ 'light-mode': !isDarkMode }">
           <!-- Theme Toggle Button -->
           <button class="theme-toggle" @click="emit('toggle-theme')" type="button">
             <span v-if="isDarkMode">☀️ Light</span>
@@ -876,99 +833,5 @@ onMounted(() => {
     transform: none !important;
     box-shadow: none;
   }
-}
-
-/* Compact mode - reduces spacing and font sizes to fit content on one page */
-.cv-preview.compact {
-  font-size: 9.5pt;
-  line-height: 1.3;
-  max-height: 297mm;
-  overflow: hidden;
-}
-
-.cv-preview.compact .cv-header {
-  padding: 20px 30px;
-}
-
-.cv-preview.compact .cv-header h1 {
-  font-size: 26pt;
-}
-
-.cv-preview.compact .header-photo {
-  width: 80px;
-  height: 80px;
-  border-width: 3px;
-}
-
-.cv-preview.compact .cv-sidebar {
-  padding: 20px 18px;
-}
-
-.cv-preview.compact .sidebar-section {
-  margin-bottom: 20px;
-}
-
-.cv-preview.compact .sidebar-section h2 {
-  font-size: 11pt;
-  margin-bottom: 8px;
-  padding-bottom: 4px;
-}
-
-.cv-preview.compact .sidebar-item {
-  margin-bottom: 12px;
-}
-
-.cv-preview.compact .sidebar-label {
-  font-size: 7.5pt;
-  margin-bottom: 2px;
-}
-
-.cv-preview.compact .sidebar-value {
-  font-size: 9pt;
-  line-height: 1.3;
-}
-
-.cv-preview.compact .cv-main {
-  padding: 20px 25px;
-}
-
-.cv-preview.compact .main-section {
-  margin-bottom: 18px;
-}
-
-.cv-preview.compact .main-section h2 {
-  font-size: 13pt;
-  margin-bottom: 10px;
-  padding-bottom: 4px;
-}
-
-.cv-preview.compact .main-item {
-  margin-bottom: 12px;
-  padding-bottom: 10px;
-}
-
-.cv-preview.compact .main-item-header {
-  margin-bottom: 6px;
-  gap: 10px;
-}
-
-.cv-preview.compact .main-item-title-group h3 {
-  font-size: 10.5pt;
-  margin-bottom: 3px;
-}
-
-.cv-preview.compact .main-item-subtitle {
-  font-size: 9.5pt;
-}
-
-.cv-preview.compact .main-item-date {
-  font-size: 8.5pt;
-  padding: 3px 10px;
-}
-
-.cv-preview.compact .main-item-description {
-  font-size: 9pt;
-  line-height: 1.4;
-  margin-top: 6px;
 }
 </style>

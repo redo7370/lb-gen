@@ -157,6 +157,82 @@ function removePhoto() {
   personalData.photoUrl = ''
 }
 
+// Hilfsfunktion zum Parsen von Datumsangaben
+function parseDate(dateStr: string): number | null {
+  if (!dateStr) return null
+
+  // "heute", "aktuell", "present" = aktuelles Datum
+  const heute =
+    dateStr.toLowerCase().includes('heute') ||
+    dateStr.toLowerCase().includes('aktuell') ||
+    dateStr.toLowerCase().includes('present')
+  if (heute) return Date.now()
+
+  // Format: MM/YYYY
+  const parts = dateStr.split(/[\/\-\.]/).map((p) => p.trim())
+  if (parts.length === 2) {
+    const month = parseInt(parts[0])
+    const year = parseInt(parts[1])
+    if (!isNaN(month) && !isNaN(year) && month >= 1 && month <= 12) {
+      return new Date(year, month - 1).getTime()
+    }
+  }
+
+  // Format: YYYY
+  if (parts.length === 1) {
+    const year = parseInt(parts[0])
+    if (!isNaN(year) && year > 1900 && year < 2100) {
+      return new Date(year, 0).getTime()
+    }
+  }
+
+  return null
+}
+
+// Validiert, ob das Von-Datum vor dem Bis-Datum liegt
+function validateDateRange(dateFrom: string, dateTo: string): boolean {
+  if (!dateFrom || !dateTo) return true // Keine Validierung wenn eines fehlt
+
+  const fromTime = parseDate(dateFrom)
+  const toTime = parseDate(dateTo)
+
+  if (fromTime === null || toTime === null) return true // Ungültiges Format wird nicht als Fehler gewertet
+
+  return fromTime <= toTime
+}
+
+// Computed: Finde alle Einträge mit Datumsfehlern
+const dateErrors = ref<Set<number>>(new Set())
+
+function checkAllDates() {
+  const errors = new Set<number>()
+
+  // Prüfe Ausbildungen
+  ausbildungen.value.forEach((item: DynamicItem) => {
+    if (!validateDateRange(item.dateFrom, item.dateTo)) {
+      errors.add(item.id)
+    }
+  })
+
+  // Prüfe Berufserfahrungen
+  berufserfahrungen.value.forEach((item: DynamicItem) => {
+    if (!validateDateRange(item.dateFrom, item.dateTo)) {
+      errors.add(item.id)
+    }
+  })
+
+  dateErrors.value = errors
+}
+
+// Überwache Änderungen an den Daten
+watch(
+  [ausbildungen, berufserfahrungen],
+  () => {
+    checkAllDates()
+  },
+  { deep: true },
+)
+
 function addAusbildung() {
   ausbildungen.value.push({
     id: ausbildungCounter++,
@@ -244,8 +320,6 @@ async function exportPDF() {
       letterRendering: true,
       scrollY: 0,
       scrollX: 0,
-      windowWidth: 794,
-      windowHeight: 1123,
     },
     jsPDF: {
       unit: 'mm' as const,
@@ -253,7 +327,7 @@ async function exportPDF() {
       orientation: 'portrait' as const,
       compress: true,
     },
-    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'], before: '.page-break' },
   }
 
   try {
@@ -303,7 +377,6 @@ async function exportPDF() {
             </div>
             <div v-else class="photo-upload-placeholder">
               <label for="photo-upload" class="photo-upload-label">
-                <span class="upload-icon">📷</span>
                 <span>Foto hochladen</span>
               </label>
               <input
@@ -352,7 +425,12 @@ async function exportPDF() {
 
         <!-- Ausbildung -->
         <h2 class="section-title">Ausbildung</h2>
-        <div class="dynamic-item" v-for="item in ausbildungen" :key="item.id">
+        <div
+          class="dynamic-item"
+          v-for="item in ausbildungen"
+          :key="item.id"
+          :class="{ 'has-date-error': dateErrors.has(item.id) }"
+        >
           <button class="btn btn-remove" @click="removeAusbildung(item.id)">✕</button>
           <div class="form-group">
             <label>Abschluss/Titel</label>
@@ -372,6 +450,9 @@ async function exportPDF() {
               <input type="text" v-model="item.dateTo" placeholder="07/2018" />
             </div>
           </div>
+          <div v-if="dateErrors.has(item.id)" class="date-error-message">
+            ⚠️ Fehler: Das End-Datum muss nach dem Start-Datum liegen!
+          </div>
           <div class="form-group">
             <label>Beschreibung</label>
             <textarea v-model="item.description" placeholder="Details zur Ausbildung..."></textarea>
@@ -381,7 +462,12 @@ async function exportPDF() {
 
         <!-- Berufserfahrung -->
         <h2 class="section-title">Berufserfahrung</h2>
-        <div class="dynamic-item" v-for="item in berufserfahrungen" :key="item.id">
+        <div
+          class="dynamic-item"
+          v-for="item in berufserfahrungen"
+          :key="item.id"
+          :class="{ 'has-date-error': dateErrors.has(item.id) }"
+        >
           <button class="btn btn-remove" @click="removeBerufserfahrung(item.id)">✕</button>
           <div class="form-group">
             <label>Position</label>
@@ -400,6 +486,9 @@ async function exportPDF() {
               <label>Bis</label>
               <input type="text" v-model="item.dateTo" placeholder="Heute" />
             </div>
+          </div>
+          <div v-if="dateErrors.has(item.id)" class="date-error-message">
+            ⚠️ Fehler: Das End-Datum muss nach dem Start-Datum liegen!
           </div>
           <div class="form-group">
             <label>Beschreibung</label>
@@ -717,6 +806,40 @@ async function exportPDF() {
   margin-bottom: 10px;
   border: 1px solid #e0e0e0;
   position: relative;
+  transition: all 0.3s ease;
+}
+
+.dynamic-item.has-date-error {
+  border-color: #dc3545;
+  background: #fff5f5;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+.date-error-message {
+  background: #dc3545;
+  color: white;
+  padding: 10px 15px;
+  border-radius: 5px;
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
 }
 
 .btn {

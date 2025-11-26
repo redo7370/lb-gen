@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, nextTick, watch } from 'vue'
+import { computed } from 'vue'
 
 interface PersonalData {
   name: string
@@ -159,55 +159,10 @@ const hasAnyAuszeichnung = computed(() => {
     (item: AuszeichnungItem) => item.title || item.verliehen || item.datum,
   )
 })
-
-// Content overflow detection for PDF
-const pdfTemplateRef = ref<HTMLElement | null>(null)
-const isCompact = ref(false)
-
-// Check if content fits on one page
-const checkContentHeight = () => {
-  nextTick(() => {
-    if (pdfTemplateRef.value) {
-      const contentHeight = pdfTemplateRef.value.scrollHeight
-      const a4HeightMm = 297
-      const mmToPx = 3.7795275591 // 96 DPI conversion
-      const a4HeightPx = a4HeightMm * mmToPx
-
-      // If content exceeds A4 height, apply compact mode
-      isCompact.value = contentHeight > a4HeightPx
-    }
-  })
-}
-
-// Watch for changes in content
-watch(
-  () => [
-    props.personalData,
-    props.ausbildungen,
-    props.berufserfahrungen,
-    props.kurse,
-    props.auszeichnungen,
-    props.kenntnisse,
-    props.sprachen,
-    props.interessen,
-  ],
-  () => {
-    checkContentHeight()
-  },
-  { deep: true },
-)
-
-onMounted(() => {
-  checkContentHeight()
-})
 </script>
 
 <template>
-  <div
-    class="pdf-template"
-    :class="{ 'light-mode': !isDarkMode, compact: isCompact }"
-    ref="pdfTemplateRef"
-  >
+  <div class="pdf-template" :class="{ 'light-mode': !isDarkMode }">
     <!-- Header mit Namen -->
     <div class="pdf-header">
       <div class="header-content">
@@ -392,7 +347,6 @@ onMounted(() => {
 /* PDF Template Styles - Optimiert für PDF Export */
 .pdf-template {
   width: 210mm;
-  min-height: 297mm;
   background: white;
   font-family: 'Arial', 'Helvetica', sans-serif;
   color: #000;
@@ -447,7 +401,6 @@ onMounted(() => {
 /* Content Layout */
 .pdf-content {
   display: flex;
-  min-height: 240mm;
 }
 
 /* Linke Spalte (Sidebar) */
@@ -569,6 +522,7 @@ onMounted(() => {
   border-bottom: 2.5px solid #2c3e50;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  page-break-after: avoid;
 }
 
 .light-mode .main-section h2 {
@@ -631,111 +585,20 @@ onMounted(() => {
   text-align: justify;
 }
 
-/* Print optimizations */
+/* Print optimizations - Ermöglicht automatische Seitenumbrüche */
 @media print {
   .pdf-template {
     width: 210mm;
-    height: 297mm;
     margin: 0;
     box-shadow: none;
   }
-}
 
-/* Compact mode - reduces spacing and font sizes to fit content on one page */
-.pdf-template.compact {
-  font-size: 9pt;
-  line-height: 1.25;
-  max-height: 297mm;
-  overflow: hidden;
-}
+  .pdf-header {
+    page-break-after: avoid;
+  }
 
-.pdf-template.compact .pdf-header {
-  padding: 15mm 12mm;
-}
-
-.pdf-template.compact .pdf-header h1 {
-  font-size: 24pt;
-}
-
-.pdf-template.compact .header-content {
-  gap: 10mm;
-}
-
-.pdf-template.compact .header-photo {
-  width: 28mm;
-  height: 28mm;
-  border-width: 1.5mm;
-}
-
-.pdf-template.compact .pdf-sidebar {
-  padding: 8mm 6mm;
-}
-
-.pdf-template.compact .sidebar-section {
-  margin-bottom: 6mm;
-}
-
-.pdf-template.compact .sidebar-section h2 {
-  font-size: 11pt;
-  margin-bottom: 3mm;
-  padding-bottom: 1.5mm;
-}
-
-.pdf-template.compact .sidebar-item {
-  margin-bottom: 3mm;
-}
-
-.pdf-template.compact .sidebar-label {
-  font-size: 7pt;
-  margin-bottom: 0.5mm;
-}
-
-.pdf-template.compact .sidebar-value {
-  font-size: 8.5pt;
-  line-height: 1.3;
-}
-
-.pdf-template.compact .pdf-main {
-  padding: 8mm 10mm;
-}
-
-.pdf-template.compact .main-section {
-  margin-bottom: 6mm;
-}
-
-.pdf-template.compact .main-section h2 {
-  font-size: 12pt;
-  margin-bottom: 3.5mm;
-  padding-bottom: 1.5mm;
-  border-bottom-width: 2px;
-}
-
-.pdf-template.compact .main-item {
-  margin-bottom: 3.5mm;
-}
-
-.pdf-template.compact .main-item-header {
-  margin-bottom: 1.5mm;
-  gap: 3mm;
-}
-
-.pdf-template.compact .main-item-title-group h3 {
-  font-size: 10pt;
-  margin-bottom: 0.5mm;
-}
-
-.pdf-template.compact .main-item-subtitle {
-  font-size: 9pt;
-}
-
-.pdf-template.compact .main-item-date {
-  font-size: 8pt;
-  padding: 0.8mm 2.5mm;
-}
-
-.pdf-template.compact .main-item-description {
-  font-size: 8.5pt;
-  line-height: 1.35;
-  margin-top: 1.5mm;
+  .pdf-content {
+    page-break-inside: auto;
+  }
 }
 </style>
