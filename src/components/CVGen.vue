@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import CVPreview from './CVPreview.vue'
 import CVPDFTemplate from './CVPDFTemplate.vue'
 import html2pdf from 'html2pdf.js'
@@ -63,6 +63,78 @@ let auszeichnungenCounter = 0
 
 const cvPreviewRef = ref<HTMLElement | null>(null)
 const cvPdfTemplateRef = ref<HTMLElement | null>(null)
+
+// LocalStorage Funktionen
+function loadFromLocalStorage() {
+  try {
+    const saved = localStorage.getItem('cv-data')
+    if (saved) {
+      const data = JSON.parse(saved)
+      Object.assign(personalData, data.personalData || {})
+      ausbildungen.value = data.ausbildungen || []
+      berufserfahrungen.value = data.berufserfahrungen || []
+      kurse.value = data.kurse || []
+      auszeichnungen.value = data.auszeichnungen || []
+      kenntnisse.value = data.kenntnisse || ''
+      sprachen.value = data.sprachen || ''
+      interessen.value = data.interessen || ''
+      isDarkMode.value = data.isDarkMode ?? true
+
+      // Update counters
+      ausbildungCounter = Math.max(0, ...ausbildungen.value.map((item: DynamicItem) => item.id)) + 1
+      berufserfahrungCounter =
+        Math.max(0, ...berufserfahrungen.value.map((item: DynamicItem) => item.id)) + 1
+      kurseCounter = Math.max(0, ...kurse.value.map((item: KursItem) => item.id)) + 1
+      auszeichnungenCounter =
+        Math.max(0, ...auszeichnungen.value.map((item: AuszeichnungItem) => item.id)) + 1
+    }
+  } catch (error) {
+    console.error('Fehler beim Laden der Daten:', error)
+  }
+}
+
+function saveToLocalStorage() {
+  try {
+    const data = {
+      personalData,
+      ausbildungen: ausbildungen.value,
+      berufserfahrungen: berufserfahrungen.value,
+      kurse: kurse.value,
+      auszeichnungen: auszeichnungen.value,
+      kenntnisse: kenntnisse.value,
+      sprachen: sprachen.value,
+      interessen: interessen.value,
+      isDarkMode: isDarkMode.value,
+    }
+    localStorage.setItem('cv-data', JSON.stringify(data))
+  } catch (error) {
+    console.error('Fehler beim Speichern der Daten:', error)
+  }
+}
+
+// Watch für automatisches Speichern
+watch(
+  [
+    personalData,
+    ausbildungen,
+    berufserfahrungen,
+    kurse,
+    auszeichnungen,
+    kenntnisse,
+    sprachen,
+    interessen,
+    isDarkMode,
+  ],
+  () => {
+    saveToLocalStorage()
+  },
+  { deep: true },
+)
+
+// Daten beim Start laden
+onMounted(() => {
+  loadFromLocalStorage()
+})
 
 function toggleTheme() {
   isDarkMode.value = !isDarkMode.value
