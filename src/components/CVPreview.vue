@@ -173,13 +173,13 @@ const parseDate = (dateStr: string): number => {
     dateStr.toLowerCase().includes('present')
   if (heute) return Date.now()
 
-  const parts = dateStr.split(/[\/\-\.]/)
-  if (parts.length === 2) {
+  const parts = dateStr.split(/[\/\-\.]/).map((p) => p.trim())
+  if (parts.length === 2 && parts[0] && parts[1]) {
     // MM/YYYY Format
     const month = parseInt(parts[0])
     const year = parseInt(parts[1])
     return new Date(year, month - 1).getTime()
-  } else if (parts.length === 1) {
+  } else if (parts.length === 1 && parts[0]) {
     // Nur Jahr
     const year = parseInt(parts[0])
     return new Date(year, 0).getTime()

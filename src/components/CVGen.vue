@@ -202,7 +202,7 @@ function parseDate(dateStr: string): number | null {
 
   // Format: MM/YYYY
   const parts = dateStr.split(/[\/\-\.]/).map((p) => p.trim())
-  if (parts.length === 2) {
+  if (parts.length === 2 && parts[0] && parts[1]) {
     const month = parseInt(parts[0])
     const year = parseInt(parts[1])
     if (!isNaN(month) && !isNaN(year) && month >= 1 && month <= 12) {
@@ -211,7 +211,7 @@ function parseDate(dateStr: string): number | null {
   }
 
   // Format: YYYY
-  if (parts.length === 1) {
+  if (parts.length === 1 && parts[0]) {
     const year = parseInt(parts[0])
     if (!isNaN(year) && year > 1900 && year < 2100) {
       return new Date(year, 0).getTime()
