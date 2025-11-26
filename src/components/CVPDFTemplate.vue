@@ -34,6 +34,18 @@ interface AuszeichnungItem {
   datum: string
 }
 
+interface SprachItem {
+  id: number
+  sprache: string
+  niveau:
+    | 'Grundkenntnisse'
+    | 'Konversationsfähig'
+    | 'Gut'
+    | 'Professionell'
+    | 'Fließend'
+    | 'Muttersprache'
+}
+
 const props = defineProps<{
   personalData: PersonalData
   ausbildungen: DynamicItem[]
@@ -41,7 +53,7 @@ const props = defineProps<{
   kurse: KursItem[]
   auszeichnungen: AuszeichnungItem[]
   kenntnisse: string
-  sprachen: string
+  sprachen: SprachItem[]
   interessen: string
   isDarkMode: boolean
 }>()
@@ -65,12 +77,22 @@ const kenntnisseArray = computed(() => {
     .filter((k: string) => k)
 })
 
-const sprachenArray = computed(() => {
-  return props.sprachen
-    .split(',')
-    .map((s: string) => s.trim())
-    .filter((s: string) => s)
+const hasAnySprache = computed(() => {
+  return props.sprachen.length > 0 && props.sprachen.some((item: SprachItem) => item.sprache)
 })
+
+// Konvertiert Sprachniveau zu numerischem Wert für Balkenanzeige
+function getLevelValue(niveau: string): number {
+  const levels: { [key: string]: number } = {
+    Grundkenntnisse: 1,
+    Konversationsfähig: 2,
+    Gut: 3,
+    Professionell: 4,
+    Fließend: 5,
+    Muttersprache: 6,
+  }
+  return levels[niveau] || 0
+}
 
 const interessenArray = computed(() => {
   return props.interessen
@@ -209,11 +231,35 @@ const hasAnyAuszeichnung = computed(() => {
         </div>
 
         <!-- Sprachen -->
-        <div class="sidebar-section" v-if="sprachenArray.length > 0">
+        <div class="sidebar-section" v-if="hasAnySprache">
           <h2>Sprachen</h2>
-          <div class="sidebar-list">
-            <div v-for="(sprache, index) in sprachenArray" :key="index" class="sidebar-list-item">
-              {{ sprache }}
+          <div class="language-items">
+            <div
+              v-for="item in sprachen"
+              :key="item.id"
+              class="language-item"
+              v-show="item.sprache"
+            >
+              <div class="language-name">
+                {{ item.sprache }} <span class="niveau-text">({{ item.niveau }})</span>
+              </div>
+              <div class="language-level">
+                <div class="level-bars">
+                  <div
+                    v-for="i in 5"
+                    :key="i"
+                    class="level-bar"
+                    :class="{
+                      filled: i <= getLevelValue(item.niveau),
+                      'native-bar': item.niveau === 'Muttersprache' && i === 5,
+                    }"
+                  ></div>
+                  <div
+                    v-if="item.niveau === 'Muttersprache'"
+                    class="level-bar native-extra filled"
+                  ></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -501,7 +547,78 @@ const hasAnyAuszeichnung = computed(() => {
   color: #667eea;
 }
 
-/* Hauptbereich */
+/* Sprachen mit Niveau-Balken (PDF-optimiert) */
+.language-items {
+  display: flex;
+  flex-direction: column;
+  gap: 3mm;
+}
+
+.language-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5mm;
+}
+
+.language-name {
+  font-size: 3mm;
+  font-weight: 600;
+  color: #000;
+}
+
+.niveau-text {
+  font-size: 2.3mm;
+  font-weight: 400;
+  color: #999;
+}
+
+.language-level {
+  display: flex;
+  align-items: center;
+}
+
+.level-bars {
+  display: flex;
+  gap: 1mm;
+  align-items: center;
+}
+
+.level-bar {
+  width: 8mm;
+  height: 2.5mm;
+  background: #e0e0e0;
+  border-radius: 0.5mm;
+}
+
+.level-bar.filled {
+  background: #2c3e50;
+}
+
+.light-mode .level-bar.filled {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.level-bar.native-bar {
+  background: #2c3e50;
+}
+
+.light-mode .level-bar.native-bar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.level-bar.native-extra {
+  background: #dc3545;
+  width: 9mm;
+  height: 3mm;
+  border: 0.5mm solid #dc3545;
+}
+
+.light-mode .level-bar.native-extra {
+  background: #dc3545;
+  border-color: #dc3545;
+}
+
+/* Rechte Spalte (Hauptbereich) */
 .pdf-main {
   flex: 1;
   padding: 10mm 12mm;

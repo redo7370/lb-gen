@@ -37,6 +37,18 @@ interface AuszeichnungItem {
   datum: string
 }
 
+interface SprachItem {
+  id: number
+  sprache: string
+  niveau:
+    | 'Grundkenntnisse'
+    | 'Konversationsfähig'
+    | 'Gut'
+    | 'Professionell'
+    | 'Fließend'
+    | 'Muttersprache'
+}
+
 const personalData = reactive<PersonalData>({
   name: '',
   geburtsdatum: '',
@@ -52,7 +64,7 @@ const berufserfahrungen = ref<DynamicItem[]>([])
 const kurse = ref<KursItem[]>([])
 const auszeichnungen = ref<AuszeichnungItem[]>([])
 const kenntnisse = ref('')
-const sprachen = ref('')
+const sprachen = ref<SprachItem[]>([])
 const interessen = ref('')
 const isDarkMode = ref(true)
 
@@ -60,6 +72,7 @@ let ausbildungCounter = 0
 let berufserfahrungCounter = 0
 let kurseCounter = 0
 let auszeichnungenCounter = 0
+let sprachenCounter = 0
 
 const cvPreviewRef = ref<HTMLElement | null>(null)
 const cvPdfTemplateRef = ref<HTMLElement | null>(null)
@@ -76,17 +89,36 @@ function loadFromLocalStorage() {
       kurse.value = data.kurse || []
       auszeichnungen.value = data.auszeichnungen || []
       kenntnisse.value = data.kenntnisse || ''
-      sprachen.value = data.sprachen || ''
+
+      // Migration: Wenn sprachen ein String ist, zu leerem Array konvertieren
+      if (typeof data.sprachen === 'string') {
+        sprachen.value = []
+      } else {
+        sprachen.value = data.sprachen || []
+      }
+
       interessen.value = data.interessen || ''
       isDarkMode.value = data.isDarkMode ?? true
 
       // Update counters
-      ausbildungCounter = Math.max(0, ...ausbildungen.value.map((item: DynamicItem) => item.id)) + 1
+      ausbildungCounter =
+        ausbildungen.value.length > 0
+          ? Math.max(...ausbildungen.value.map((item: DynamicItem) => item.id)) + 1
+          : 0
       berufserfahrungCounter =
-        Math.max(0, ...berufserfahrungen.value.map((item: DynamicItem) => item.id)) + 1
-      kurseCounter = Math.max(0, ...kurse.value.map((item: KursItem) => item.id)) + 1
+        berufserfahrungen.value.length > 0
+          ? Math.max(...berufserfahrungen.value.map((item: DynamicItem) => item.id)) + 1
+          : 0
+      kurseCounter =
+        kurse.value.length > 0 ? Math.max(...kurse.value.map((item: KursItem) => item.id)) + 1 : 0
       auszeichnungenCounter =
-        Math.max(0, ...auszeichnungen.value.map((item: AuszeichnungItem) => item.id)) + 1
+        auszeichnungen.value.length > 0
+          ? Math.max(...auszeichnungen.value.map((item: AuszeichnungItem) => item.id)) + 1
+          : 0
+      sprachenCounter =
+        sprachen.value.length > 0
+          ? Math.max(...sprachen.value.map((item: SprachItem) => item.id)) + 1
+          : 0
     }
   } catch (error) {
     console.error('Fehler beim Laden der Daten:', error)
@@ -287,6 +319,18 @@ function addAuszeichnung() {
 
 function removeAuszeichnung(id: number) {
   auszeichnungen.value = auszeichnungen.value.filter((item: AuszeichnungItem) => item.id !== id)
+}
+
+function addSprache() {
+  sprachen.value.push({
+    id: sprachenCounter++,
+    sprache: '',
+    niveau: 'Grundkenntnisse',
+  })
+}
+
+function removeSprache(id: number) {
+  sprachen.value = sprachen.value.filter((item: SprachItem) => item.id !== id)
 }
 
 async function exportPDF() {
@@ -556,13 +600,25 @@ async function exportPDF() {
 
         <!-- Sprachen -->
         <h2 class="section-title">Sprachen</h2>
-        <div class="form-group">
-          <label>Sprachen (durch Komma getrennt)</label>
-          <textarea
-            v-model="sprachen"
-            placeholder="Deutsch (Muttersprache), Englisch (fließend), etc."
-          ></textarea>
+        <div class="dynamic-item" v-for="item in sprachen" :key="item.id">
+          <button class="btn btn-remove" @click="removeSprache(item.id)">✕</button>
+          <div class="form-group">
+            <label>Sprache</label>
+            <input type="text" v-model="item.sprache" placeholder="z.B. Deutsch" />
+          </div>
+          <div class="form-group">
+            <label>Niveau</label>
+            <select v-model="item.niveau" class="niveau-select">
+              <option value="Grundkenntnisse">Grundkenntnisse</option>
+              <option value="Konversationsfähig">Konversationsfähig</option>
+              <option value="Gut">Gut</option>
+              <option value="Professionell">Professionell</option>
+              <option value="Fließend">Fließend</option>
+              <option value="Muttersprache">Muttersprache</option>
+            </select>
+          </div>
         </div>
+        <button class="btn btn-add" @click="addSprache">+ Sprache hinzufügen</button>
 
         <!-- Interessen -->
         <h2 class="section-title">Interessen</h2>
@@ -896,6 +952,17 @@ async function exportPDF() {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
+}
+
+/* Sprachniveau Auswahl und Vorschau */
+.niveau-select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
 }
 
 @media (max-width: 968px) {
