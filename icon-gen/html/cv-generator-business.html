@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CV Generator Business Icon</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        width: 512px;
+        height: 512px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+      }
+
+      .icon-container {
+        width: 512px;
+        height: 512px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+
+      /* Gradient Background with Border */
+      .background {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+        border-radius: 115px;
+        position: absolute;
+        box-shadow: 0 35px 70px rgba(15, 23, 42, 0.5);
+      }
+
+      /* Grid Pattern Overlay */
+      .grid-overlay {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        border-radius: 115px;
+        opacity: 0.1;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+        background-size: 30px 30px;
+      }
+
+      /* Central Container */
+      .central-container {
+        width: 380px;
+        height: 380px;
+        position: relative;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Business Card */
+      .business-card {
+        width: 280px;
+        height: 360px;
+        background: white;
+        border-radius: 20px;
+        position: relative;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+        overflow: visible;
+      }
+
+      /* Top Accent Bar */
+      .accent-bar {
+        width: 100%;
+        height: 8px;
+        background: linear-gradient(90deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%);
+        position: absolute;
+        top: 0;
+        left: 0;
+        border-radius: 20px 20px 0 0;
+      }
+
+      /* Card Content */
+      .card-content {
+        padding: 35px 25px 25px 25px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      /* Profile Section */
+      .profile-section {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f3f4f6;
+      }
+
+      .profile-pic {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        border-radius: 12px;
+        position: relative;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      }
+
+      .profile-pic::before {
+        content: '';
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        width: 32px;
+        height: 32px;
+        background: white;
+        border-radius: 50%;
+      }
+
+      .profile-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .name-line {
+        width: 120px;
+        height: 8px;
+        background: #1e293b;
+        border-radius: 4px;
+      }
+
+      .role-line {
+        width: 90px;
+        height: 5px;
+        background: #cbd5e1;
+        border-radius: 2.5px;
+      }
+
+      /* Section */
+      .section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .section-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 5px;
+      }
+
+      .section-icon {
+        width: 20px;
+        height: 20px;
+        background: #3b82f6;
+        border-radius: 4px;
+      }
+
+      .section-title {
+        width: 70px;
+        height: 6px;
+        background: #64748b;
+        border-radius: 3px;
+      }
+
+      .section-line {
+        height: 4px;
+        background: #e5e7eb;
+        border-radius: 2px;
+        margin-left: 28px;
+      }
+
+      .section-line.full {
+        width: calc(100% - 28px);
+      }
+
+      .section-line.large {
+        width: calc(80% - 28px);
+      }
+
+      .section-line.medium {
+        width: calc(65% - 28px);
+      }
+
+      /* Floating Elements */
+      .float-element {
+        position: absolute;
+        z-index: 3;
+      }
+
+      /* Star Badge */
+      .star-badge {
+        top: -15px;
+        right: -15px;
+        width: 70px;
+        height: 70px;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-radius: 50%;
+        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 5px solid white;
+      }
+
+      .star {
+        width: 0;
+        height: 0;
+        border-left: 15px solid transparent;
+        border-right: 15px solid transparent;
+        border-bottom: 25px solid white;
+        position: relative;
+      }
+
+      .star::before {
+        content: '';
+        position: absolute;
+        top: 9px;
+        left: -15px;
+        width: 0;
+        height: 0;
+        border-left: 15px solid transparent;
+        border-right: 15px solid transparent;
+        border-top: 25px solid white;
+      }
+
+      /* Document Stack Effect */
+      .doc-stack-1 {
+        position: absolute;
+        width: 270px;
+        height: 350px;
+        background: rgba(255, 255, 255, 0.6);
+        border-radius: 18px;
+        top: 5px;
+        left: 5px;
+        z-index: -1;
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+      }
+
+      .doc-stack-2 {
+        position: absolute;
+        width: 260px;
+        height: 340px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 16px;
+        top: 10px;
+        left: 10px;
+        z-index: -2;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Corner Ornament */
+      .corner-ornament {
+        position: absolute;
+        top: 30px;
+        left: 30px;
+        width: 80px;
+        height: 80px;
+        border: 3px solid rgba(59, 130, 246, 0.2);
+        border-radius: 50%;
+        z-index: 1;
+      }
+
+      .corner-ornament::before {
+        content: '';
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        width: 56px;
+        height: 56px;
+        border: 2px solid rgba(59, 130, 246, 0.15);
+        border-radius: 50%;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="icon-container">
+      <div class="background"></div>
+      <div class="grid-overlay"></div>
+
+      <div class="corner-ornament"></div>
+
+      <div class="central-container">
+        <div class="business-card">
+          <div class="doc-stack-1"></div>
+          <div class="doc-stack-2"></div>
+
+          <div class="accent-bar"></div>
+
+          <div class="card-content">
+            <div class="profile-section">
+              <div class="profile-pic"></div>
+              <div class="profile-info">
+                <div class="name-line"></div>
+                <div class="role-line"></div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-header">
+                <div class="section-icon"></div>
+                <div class="section-title"></div>
+              </div>
+              <div class="section-line full"></div>
+              <div class="section-line large"></div>
+            </div>
+
+            <div class="section">
+              <div class="section-header">
+                <div class="section-icon"></div>
+                <div class="section-title"></div>
+              </div>
+              <div class="section-line full"></div>
+              <div class="section-line medium"></div>
+              <div class="section-line large"></div>
+            </div>
+
+            <div class="section">
+              <div class="section-header">
+                <div class="section-icon"></div>
+                <div class="section-title"></div>
+              </div>
+              <div class="section-line large"></div>
+            </div>
+          </div>
+
+          <div class="float-element star-badge">
+            <div class="star"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
