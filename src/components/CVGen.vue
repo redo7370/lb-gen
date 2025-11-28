@@ -3,51 +3,13 @@ import { ref, reactive, onMounted, watch } from 'vue'
 import CVPreview from './CVPreview.vue'
 import CVPDFTemplate from './CVPDFTemplate.vue'
 import html2pdf from 'html2pdf.js'
-
-interface PersonalData {
-  name: string
-  geburtsdatum: string
-  geburtsort: string
-  adresse: string
-  telefon: string
-  email: string
-  photoUrl: string
-}
-
-interface DynamicItem {
-  id: number
-  title: string
-  subtitle: string
-  dateFrom: string
-  dateTo: string
-  description?: string
-}
-
-interface KursItem {
-  id: number
-  title: string
-  anbieter: string
-  datum: string
-}
-
-interface AuszeichnungItem {
-  id: number
-  title: string
-  verliehen: string
-  datum: string
-}
-
-interface SprachItem {
-  id: number
-  sprache: string
-  niveau:
-    | 'Grundkenntnisse'
-    | 'Konversationsfähig'
-    | 'Gut'
-    | 'Professionell'
-    | 'Fließend'
-    | 'Muttersprache'
-}
+import type {
+  PersonalData,
+  DynamicItem,
+  KursItem,
+  AuszeichnungItem,
+  SprachItem,
+} from '@/composables/useCVData'
 
 const personalData = reactive<PersonalData>({
   name: '',
@@ -66,7 +28,7 @@ const auszeichnungen = ref<AuszeichnungItem[]>([])
 const kenntnisse = ref('')
 const sprachen = ref<SprachItem[]>([])
 const interessen = ref('')
-const isDarkMode = ref(true)
+const isSPADark = ref(false) // SPA Dark Mode ONLY - Navbar, Form, Preview Background
 
 let ausbildungCounter = 0
 let berufserfahrungCounter = 0
@@ -83,12 +45,15 @@ function loadFromLocalStorage() {
     const saved = localStorage.getItem('cv-data')
     if (saved) {
       const data = JSON.parse(saved)
+
+      // Personal Data
       Object.assign(personalData, data.personalData || {})
+
+      // Listen
       ausbildungen.value = data.ausbildungen || []
       berufserfahrungen.value = data.berufserfahrungen || []
       kurse.value = data.kurse || []
       auszeichnungen.value = data.auszeichnungen || []
-      kenntnisse.value = data.kenntnisse || ''
 
       // Migration: Wenn sprachen ein String ist, zu leerem Array konvertieren
       if (typeof data.sprachen === 'string') {
@@ -97,10 +62,14 @@ function loadFromLocalStorage() {
         sprachen.value = data.sprachen || []
       }
 
+      // Texte
+      kenntnisse.value = data.kenntnisse || ''
       interessen.value = data.interessen || ''
-      isDarkMode.value = data.isDarkMode ?? true
 
-      // Update counters
+      // SPA Dark Mode only
+      isSPADark.value = data.isSPADark ?? false
+
+      // Counter aktualisieren
       ausbildungCounter =
         ausbildungen.value.length > 0
           ? Math.max(...ausbildungen.value.map((item: DynamicItem) => item.id)) + 1
@@ -136,7 +105,7 @@ function saveToLocalStorage() {
       kenntnisse: kenntnisse.value,
       sprachen: sprachen.value,
       interessen: interessen.value,
-      isDarkMode: isDarkMode.value,
+      isSPADark: isSPADark.value, // Only SPA dark mode
     }
     localStorage.setItem('cv-data', JSON.stringify(data))
   } catch (error) {
@@ -155,7 +124,7 @@ watch(
     kenntnisse,
     sprachen,
     interessen,
-    isDarkMode,
+    isSPADark, // Only SPA Dark Mode
   ],
   () => {
     saveToLocalStorage()
@@ -165,12 +134,31 @@ watch(
 
 // Daten beim Start laden
 onMounted(() => {
+  // Bereinige alte gecachte Daten, wenn nötig
+  const saved = localStorage.getItem('cv-data')
+  if (saved) {
+    const data = JSON.parse(saved)
+    // Wenn alte isDarkMode vorhanden ist, migriere zu SPA Dark Mode
+    if (data.isDarkMode !== undefined && data.isSPADarkMode === undefined) {
+      console.log('Migriere alte Dark Mode Daten...')
+      data.isSPADarkMode = false
+      delete data.isDarkMode
+      delete data.isCVDarkMode // Remove old CV dark mode
+      localStorage.setItem('cv-data', JSON.stringify(data))
+    }
+  }
+
   loadFromLocalStorage()
+  console.log('Initial state - SPA Dark Mode:', isSPADark.value)
 })
 
+// Toggle SPA Dark Mode - for Navbar, Form, Preview-Section Background
 function toggleTheme() {
-  isDarkMode.value = !isDarkMode.value
+  isSPADark.value = !isSPADark.value
+  console.log('SPA Dark Mode toggled to:', isSPADark.value)
 }
+
+// CV Template handles its own dark mode internally - no function needed here
 
 function handleImageUpload(event: Event) {
   const target = event.target as HTMLInputElement
@@ -393,11 +381,21 @@ async function exportPDF() {
 </script>
 
 <template>
-  <div class="container">
-    <div class="header">
-      <h1>Lebenslauf Generator</h1>
-      <p>Erstellen Sie Ihren professionellen Lebenslauf</p>
-    </div>
+  <div class="container" :class="{ 'dark-mode': isSPADark }">
+    <!-- Navbar -->
+    <nav class="navbar">
+      <div class="navbar-content">
+        <div class="navbar-brand">
+          <h1>Lebenslauf Generator</h1>
+        </div>
+        <div class="navbar-actions">
+          <button class="theme-toggle-btn" @click="toggleTheme" type="button">
+            <span v-if="isSPADark">☀️ Light Mode</span>
+            <span v-else>🌙 Dark Mode</span>
+          </button>
+        </div>
+      </div>
+    </nav>
 
     <div class="content">
       <!-- Form Section -->
@@ -631,6 +629,7 @@ async function exportPDF() {
       <!-- Preview Section -->
       <div class="preview-section">
         <button class="btn btn-export" @click="exportPDF">📥 Als PDF exportieren</button>
+        <!-- CVPreview manages its own CV template dark mode internally -->
         <CVPreview
           ref="cvPreviewRef"
           :personal-data="personalData"
@@ -641,8 +640,7 @@ async function exportPDF() {
           :kenntnisse="kenntnisse"
           :sprachen="sprachen"
           :interessen="interessen"
-          :is-dark-mode="isDarkMode"
-          @toggle-theme="toggleTheme"
+          :is-s-p-a-dark="isSPADark"
         />
       </div>
     </div>
@@ -659,7 +657,6 @@ async function exportPDF() {
         :kenntnisse="kenntnisse"
         :sprachen="sprachen"
         :interessen="interessen"
-        :is-dark-mode="isDarkMode"
       />
     </div>
   </div>
@@ -670,23 +667,70 @@ async function exportPDF() {
   width: 100vw;
   height: 100vh;
   margin: 0;
-  background: white;
+  background: #f8fafc;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  transition: background-color 0.3s ease;
 }
 
-.header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.container.dark-mode {
+  background: #0f172a;
+}
+
+.navbar {
+  background: #2d3748;
   color: white;
-  padding: 20px 30px;
-  text-align: center;
+  padding: 15px 30px;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
-.header h1 {
-  font-size: 1.8em;
-  margin-bottom: 5px;
+.container.dark-mode .navbar {
+  background: #1e293b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.navbar-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 100%;
+}
+
+.navbar-brand h1 {
+  font-size: 1.5em;
+  margin: 0;
+  font-weight: 600;
+}
+
+.navbar-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.theme-toggle-btn {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.theme-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.theme-toggle-btn:active {
+  transform: translateY(0);
 }
 
 .content {
@@ -699,9 +743,17 @@ async function exportPDF() {
 .form-section {
   width: 420px;
   padding: 25px;
-  background: #f8f9fa;
+  background: white;
   overflow-y: auto;
   flex-shrink: 0;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+.container.dark-mode .form-section {
+  background: #1e293b;
+  color: #f1f5f9;
 }
 
 .preview-section {
@@ -709,9 +761,14 @@ async function exportPDF() {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #e8e8e8;
+  background: #e2e8f0;
   padding: 20px;
   min-width: 0;
+  transition: background-color 0.3s ease;
+}
+
+.container.dark-mode .preview-section {
+  background: #0f172a;
 }
 
 .preview-section > :last-child {
@@ -727,23 +784,46 @@ async function exportPDF() {
   display: block;
   margin-bottom: 5px;
   font-weight: 600;
-  color: #333;
+  color: #1e293b;
+  transition: color 0.3s ease;
+}
+
+.container.dark-mode .form-group label {
+  color: #f1f5f9;
 }
 
 .form-group input,
 .form-group textarea {
   width: 100%;
   padding: 10px;
-  border: 2px solid #ddd;
+  border: 2px solid #cbd5e0;
   border-radius: 5px;
   font-size: 14px;
-  transition: border-color 0.3s;
+  background: white;
+  color: #1e293b;
+  transition:
+    border-color 0.3s,
+    background-color 0.3s,
+    color 0.3s;
+}
+
+.container.dark-mode .form-group input,
+.container.dark-mode .form-group textarea {
+  background: #334155;
+  border-color: #475569;
+  color: #f1f5f9;
 }
 
 .form-group input:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #2d3748;
+}
+
+.container.dark-mode .form-group input:focus,
+.container.dark-mode .form-group textarea:focus {
+  border-color: #64748b;
+  background: #475569;
 }
 
 .form-group textarea {
@@ -769,8 +849,14 @@ async function exportPDF() {
   height: 150px;
   border-radius: 50%;
   overflow: hidden;
-  border: 3px solid #667eea;
+  border: 3px solid #2d3748;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.container.dark-mode .photo-preview {
+  border-color: #64748b;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
 }
 
 .photo-preview img {
@@ -808,19 +894,29 @@ async function exportPDF() {
   width: 150px;
   height: 150px;
   border-radius: 50%;
-  border: 3px dashed #667eea;
+  border: 3px dashed #2d3748;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f8f9fa;
+  background: #f8fafc;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
+.container.dark-mode .photo-upload-placeholder {
+  border-color: #64748b;
+  background: #334155;
+}
+
 .photo-upload-placeholder:hover {
-  border-color: #5568d3;
-  background: #f0f1f5;
+  border-color: #1e293b;
+  background: #f1f5f9;
   transform: scale(1.05);
+}
+
+.container.dark-mode .photo-upload-placeholder:hover {
+  border-color: #94a3b8;
+  background: #475569;
 }
 
 .photo-upload-label {
@@ -839,8 +935,13 @@ async function exportPDF() {
 
 .photo-upload-label span:last-child {
   font-size: 14px;
-  color: #667eea;
+  color: #2d3748;
   font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.container.dark-mode .photo-upload-label span:last-child {
+  color: #cbd5e0;
 }
 
 .photo-input {
@@ -849,26 +950,44 @@ async function exportPDF() {
 
 .section-title {
   font-size: 1.5em;
-  color: #667eea;
+  color: #2d3748;
   margin: 30px 0 20px 0;
   padding-bottom: 10px;
-  border-bottom: 2px solid #667eea;
+  border-bottom: 2px solid #2d3748;
+  transition:
+    color 0.3s ease,
+    border-color 0.3s ease;
+}
+
+.container.dark-mode .section-title {
+  color: #e2e8f0;
+  border-bottom-color: #64748b;
 }
 
 .dynamic-item {
-  background: #fff;
+  background: #f8fafc;
   padding: 15px;
   border-radius: 5px;
   margin-bottom: 10px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #cbd5e0;
   position: relative;
   transition: all 0.3s ease;
+}
+
+.container.dark-mode .dynamic-item {
+  background: #334155;
+  border-color: #475569;
 }
 
 .dynamic-item.has-date-error {
   border-color: #dc3545;
   background: #fff5f5;
   box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+.container.dark-mode .dynamic-item.has-date-error {
+  background: #4a2020;
+  border-color: #ff6b6b;
 }
 
 .date-error-message {
@@ -933,19 +1052,30 @@ async function exportPDF() {
 }
 
 .btn-export {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #2d3748;
   color: white;
   font-size: 16px;
   padding: 12px 30px;
   display: block;
   margin: 0 auto 15px auto;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 12px rgba(45, 55, 72, 0.4);
   flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.container.dark-mode .btn-export {
+  background: #475569;
+  box-shadow: 0 4px 12px rgba(71, 85, 105, 0.6);
 }
 
 .btn-export:hover {
+  background: #1e293b;
   transform: translateY(-2px);
-  box-shadow: 0 7px 20px rgba(102, 126, 234, 0.6);
+  box-shadow: 0 7px 20px rgba(45, 55, 72, 0.6);
+}
+
+.container.dark-mode .btn-export:hover {
+  background: #64748b;
 }
 
 .two-column {
@@ -958,11 +1088,22 @@ async function exportPDF() {
 .niveau-select {
   width: 100%;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 2px solid #cbd5e0;
   border-radius: 5px;
   font-size: 14px;
   background: white;
+  color: #1e293b;
   cursor: pointer;
+  transition:
+    background-color 0.3s,
+    border-color 0.3s,
+    color 0.3s;
+}
+
+.container.dark-mode .niveau-select {
+  background: #334155;
+  border-color: #475569;
+  color: #f1f5f9;
 }
 
 @media (max-width: 968px) {

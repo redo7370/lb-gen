@@ -1,66 +1,44 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import CVA4Template from './CVA4Template.vue'
+import type { CVProps } from '@/composables/useCVData'
 
-interface PersonalData {
-  name: string
-  geburtsdatum: string
-  geburtsort: string
-  adresse: string
-  telefon: string
-  email: string
-  photoUrl: string
+const props = defineProps<CVProps>()
+
+// Ref to A4 template component
+const a4TemplateRef = ref<InstanceType<typeof CVA4Template> | null>(null)
+
+// SPA dark mode for zoom controls styling only
+const spaIsDark = computed(() => props.isSPADark ?? false)
+
+// Zoom Controls Classes
+const zoomControlsClasses = computed(() => ({
+  dark: spaIsDark.value,
+}))
+
+// A4 dark mode state - synced via events
+const a4DarkMode = ref(false)
+
+// Load initial A4 dark mode state from localStorage
+onMounted(() => {
+  const saved = localStorage.getItem('cv-a4-dark-mode')
+  if (saved !== null) {
+    a4DarkMode.value = saved === 'true'
+  }
+})
+
+// Handle toggle from template button - calls A4 component method
+const handleToggleA4Theme = () => {
+  if (a4TemplateRef.value) {
+    a4TemplateRef.value.toggleA4Dark()
+  }
 }
 
-interface DynamicItem {
-  id: number
-  title: string
-  subtitle: string
-  dateFrom: string
-  dateTo: string
-  description?: string
+// Handle dark mode change event from A4 component
+const handleA4DarkModeChange = (value: boolean) => {
+  a4DarkMode.value = value
+  console.log('🎨 CVPreview received A4 Dark Mode change:', value)
 }
-
-interface KursItem {
-  id: number
-  title: string
-  anbieter: string
-  datum: string
-}
-
-interface AuszeichnungItem {
-  id: number
-  title: string
-  verliehen: string
-  datum: string
-}
-
-interface SprachItem {
-  id: number
-  sprache: string
-  niveau:
-    | 'Grundkenntnisse'
-    | 'Konversationsfähig'
-    | 'Gut'
-    | 'Professionell'
-    | 'Fließend'
-    | 'Muttersprache'
-}
-
-const props = defineProps<{
-  personalData: PersonalData
-  ausbildungen: DynamicItem[]
-  berufserfahrungen: DynamicItem[]
-  kurse: KursItem[]
-  auszeichnungen: AuszeichnungItem[]
-  kenntnisse: string
-  sprachen: SprachItem[]
-  interessen: string
-  isDarkMode: boolean
-}>()
-
-const emit = defineEmits<{
-  'toggle-theme': []
-}>()
 
 // Zoom und Pan State
 const zoom = ref(1)
@@ -119,140 +97,27 @@ const handleWheel = (e: WheelEvent) => {
     zoom.value = Math.max(0.5, Math.min(2, zoom.value + delta))
   }
 }
-
-const geburtsText = computed(() => {
-  if (!props.personalData.geburtsdatum && !props.personalData.geburtsort) return ''
-  let text = ''
-  if (props.personalData.geburtsdatum) {
-    text += new Date(props.personalData.geburtsdatum).toLocaleDateString('de-DE')
-  }
-  if (props.personalData.geburtsort) {
-    text += (props.personalData.geburtsdatum ? ', ' : '') + props.personalData.geburtsort
-  }
-  return text
-})
-
-const kenntnisseArray = computed(() => {
-  return props.kenntnisse
-    .split(',')
-    .map((k: string) => k.trim())
-    .filter((k: string) => k)
-})
-
-const hasAnySprache = computed(() => {
-  return props.sprachen.length > 0 && props.sprachen.some((item: SprachItem) => item.sprache)
-})
-
-// Konvertiert Sprachniveau zu numerischem Wert für Balkenanzeige
-function getLevelValue(niveau: string): number {
-  const levels: { [key: string]: number } = {
-    Grundkenntnisse: 1,
-    Konversationsfähig: 2,
-    Gut: 3,
-    Professionell: 4,
-    Fließend: 5,
-    Muttersprache: 6,
-  }
-  return levels[niveau] || 0
-}
-
-const interessenArray = computed(() => {
-  return props.interessen
-    .split(',')
-    .map((i: string) => i.trim())
-    .filter((i: string) => i)
-})
-
-// Hilfsfunktion zum Parsen von Datumsangaben
-const parseDate = (dateStr: string): number => {
-  if (!dateStr) return 0
-  // Versuche verschiedene Formate: MM/YYYY, YYYY, oder "heute"/"aktuell"
-  const heute =
-    dateStr.toLowerCase().includes('heute') ||
-    dateStr.toLowerCase().includes('aktuell') ||
-    dateStr.toLowerCase().includes('present')
-  if (heute) return Date.now()
-
-  const parts = dateStr.split(/[\/\-\.]/).map((p) => p.trim())
-  if (parts.length === 2 && parts[0] && parts[1]) {
-    // MM/YYYY Format
-    const month = parseInt(parts[0])
-    const year = parseInt(parts[1])
-    return new Date(year, month - 1).getTime()
-  } else if (parts.length === 1 && parts[0]) {
-    // Nur Jahr
-    const year = parseInt(parts[0])
-    return new Date(year, 0).getTime()
-  }
-  return 0
-}
-
-// Sortierte Listen (neueste zuerst)
-const sortedAusbildungen = computed(() => {
-  return [...props.ausbildungen].sort((a, b) => {
-    const dateA = parseDate(a.dateTo || a.dateFrom)
-    const dateB = parseDate(b.dateTo || b.dateFrom)
-    return dateB - dateA
-  })
-})
-
-const sortedBerufserfahrungen = computed(() => {
-  return [...props.berufserfahrungen].sort((a, b) => {
-    const dateA = parseDate(a.dateTo || a.dateFrom)
-    const dateB = parseDate(b.dateTo || b.dateFrom)
-    return dateB - dateA
-  })
-})
-
-const sortedKurse = computed(() => {
-  return [...props.kurse].sort((a, b) => {
-    const dateA = parseDate(a.datum)
-    const dateB = parseDate(b.datum)
-    return dateB - dateA
-  })
-})
-
-const sortedAuszeichnungen = computed(() => {
-  return [...props.auszeichnungen].sort((a, b) => {
-    const dateA = parseDate(a.datum)
-    const dateB = parseDate(b.datum)
-    return dateB - dateA
-  })
-})
-
-const hasAnyAusbildung = computed(() => {
-  return props.ausbildungen.some(
-    (item: DynamicItem) =>
-      item.title || item.subtitle || item.dateFrom || item.dateTo || item.description,
-  )
-})
-
-const hasAnyBerufserfahrung = computed(() => {
-  return props.berufserfahrungen.some(
-    (item: DynamicItem) =>
-      item.title || item.subtitle || item.dateFrom || item.dateTo || item.description,
-  )
-})
-
-const hasAnyKurs = computed(() => {
-  return props.kurse.some((item: KursItem) => item.title || item.anbieter || item.datum)
-})
-
-const hasAnyAuszeichnung = computed(() => {
-  return props.auszeichnungen.some(
-    (item: AuszeichnungItem) => item.title || item.verliehen || item.datum,
-  )
-})
 </script>
 
 <template>
   <div class="cv-preview-wrapper">
-    <!-- Zoom Controls -->
-    <div class="zoom-controls">
+    <!-- Zoom Controls (folgen SPA Dark Mode vom Navbar-Button) -->
+    <div class="zoom-controls" :class="zoomControlsClasses">
       <button @click="zoomOut" class="zoom-btn" title="Verkleinern">−</button>
       <span class="zoom-level">{{ Math.round(zoom * 100) }}%</span>
       <button @click="zoomIn" class="zoom-btn" title="Vergrößern">+</button>
       <button @click="resetZoom" class="zoom-btn reset-btn" title="Zurücksetzen">↺</button>
+      <div class="controls-divider"></div>
+      <!-- Theme-Button steuert A4 Template Dark Mode (INDEPENDENT) -->
+      <button
+        @click="handleToggleA4Theme"
+        class="zoom-btn theme-btn"
+        type="button"
+        title="A4 Template Theme umschalten"
+      >
+        <span v-if="a4DarkMode">☀️</span>
+        <span v-else>🌙</span>
+      </button>
     </div>
 
     <!-- Scrollable Container -->
@@ -272,208 +137,19 @@ const hasAnyAuszeichnung = computed(() => {
           transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
         }"
       >
-        <div class="cv-preview" :class="{ 'light-mode': !isDarkMode }">
-          <!-- Theme Toggle Button -->
-          <button class="theme-toggle" @click="emit('toggle-theme')" type="button">
-            <span v-if="isDarkMode">☀️ Light</span>
-            <span v-else>🌙 Dark</span>
-          </button>
-          <!-- Header mit Namen -->
-          <div class="cv-header">
-            <div class="header-content">
-              <div v-if="personalData.photoUrl" class="header-photo">
-                <img :src="personalData.photoUrl" alt="Profilfoto" />
-              </div>
-              <h1>{{ personalData.name || 'Ihr Name' }}</h1>
-            </div>
-          </div>
-
-          <!-- Zweispalten Layout -->
-          <div class="cv-content">
-            <!-- Linke Spalte -->
-            <div class="cv-sidebar">
-              <!-- Persönliche Informationen -->
-              <div class="sidebar-section">
-                <h2>Kontakt</h2>
-                <div class="sidebar-item" v-if="geburtsText">
-                  <div class="sidebar-label">Geburt</div>
-                  <div class="sidebar-value">{{ geburtsText }}</div>
-                </div>
-                <div class="sidebar-item" v-if="personalData.adresse">
-                  <div class="sidebar-label">Adresse</div>
-                  <div class="sidebar-value">{{ personalData.adresse }}</div>
-                </div>
-                <div class="sidebar-item" v-if="personalData.telefon">
-                  <div class="sidebar-label">Telefon</div>
-                  <div class="sidebar-value">{{ personalData.telefon }}</div>
-                </div>
-                <div class="sidebar-item" v-if="personalData.email">
-                  <div class="sidebar-label">E-Mail</div>
-                  <div class="sidebar-value">{{ personalData.email }}</div>
-                </div>
-              </div>
-
-              <!-- Kenntnisse -->
-              <div class="sidebar-section" v-if="kenntnisseArray.length > 0">
-                <h2>Kenntnisse</h2>
-                <div class="sidebar-tags">
-                  <div
-                    v-for="(kenntnis, index) in kenntnisseArray"
-                    :key="index"
-                    class="sidebar-tag"
-                  >
-                    {{ kenntnis }}
-                  </div>
-                </div>
-              </div>
-
-              <!-- Sprachen -->
-              <div class="sidebar-section" v-if="hasAnySprache">
-                <h2>Sprachen</h2>
-                <div class="language-items">
-                  <div
-                    v-for="item in sprachen"
-                    :key="item.id"
-                    class="language-item"
-                    v-show="item.sprache"
-                  >
-                    <div class="language-name">
-                      {{ item.sprache }} <span class="niveau-text">({{ item.niveau }})</span>
-                    </div>
-                    <div class="language-level">
-                      <div class="level-bars">
-                        <div
-                          v-for="i in 5"
-                          :key="i"
-                          class="level-bar"
-                          :class="{
-                            filled: i <= getLevelValue(item.niveau),
-                            'native-bar': item.niveau === 'Muttersprache' && i === 5,
-                          }"
-                        ></div>
-                        <div
-                          v-if="item.niveau === 'Muttersprache'"
-                          class="level-bar native-extra filled"
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Interessen -->
-              <div class="sidebar-section" v-if="interessenArray.length > 0">
-                <h2>Interessen</h2>
-                <div class="sidebar-list">
-                  <div
-                    v-for="(interesse, index) in interessenArray"
-                    :key="index"
-                    class="sidebar-list-item"
-                  >
-                    {{ interesse }}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Hauptbereich rechts -->
-            <div class="cv-main">
-              <!-- Ausbildung -->
-              <div v-if="hasAnyAusbildung" class="main-section">
-                <h2>Ausbildung</h2>
-                <div
-                  v-for="item in sortedAusbildungen"
-                  :key="item.id"
-                  class="main-item"
-                  v-show="
-                    item.title || item.subtitle || item.dateFrom || item.dateTo || item.description
-                  "
-                >
-                  <div class="main-item-header">
-                    <div class="main-item-title-group">
-                      <h3 v-if="item.title">{{ item.title }}</h3>
-                      <div v-if="item.subtitle" class="main-item-subtitle">{{ item.subtitle }}</div>
-                    </div>
-                    <div v-if="item.dateFrom || item.dateTo" class="main-item-date">
-                      {{ item.dateFrom }}{{ item.dateFrom && item.dateTo ? ' - ' : ''
-                      }}{{ item.dateTo }}
-                    </div>
-                  </div>
-                  <div v-if="item.description" class="main-item-description">
-                    {{ item.description }}
-                  </div>
-                </div>
-              </div>
-
-              <!-- Berufserfahrung -->
-              <div v-if="hasAnyBerufserfahrung" class="main-section">
-                <h2>Berufserfahrung</h2>
-                <div
-                  v-for="item in sortedBerufserfahrungen"
-                  :key="item.id"
-                  class="main-item"
-                  v-show="
-                    item.title || item.subtitle || item.dateFrom || item.dateTo || item.description
-                  "
-                >
-                  <div class="main-item-header">
-                    <div class="main-item-title-group">
-                      <h3 v-if="item.title">{{ item.title }}</h3>
-                      <div v-if="item.subtitle" class="main-item-subtitle">{{ item.subtitle }}</div>
-                    </div>
-                    <div v-if="item.dateFrom || item.dateTo" class="main-item-date">
-                      {{ item.dateFrom }}{{ item.dateFrom && item.dateTo ? ' - ' : ''
-                      }}{{ item.dateTo }}
-                    </div>
-                  </div>
-                  <div v-if="item.description" class="main-item-description">
-                    {{ item.description }}
-                  </div>
-                </div>
-              </div>
-
-              <!-- Kurse & Zertifikate -->
-              <div v-if="hasAnyKurs" class="main-section">
-                <h2>Kurse & Zertifikate</h2>
-                <div
-                  v-for="item in sortedKurse"
-                  :key="item.id"
-                  class="main-item"
-                  v-show="item.title || item.anbieter || item.datum"
-                >
-                  <div class="main-item-header">
-                    <div class="main-item-title-group">
-                      <h3 v-if="item.title">{{ item.title }}</h3>
-                      <div v-if="item.anbieter" class="main-item-subtitle">{{ item.anbieter }}</div>
-                    </div>
-                    <div v-if="item.datum" class="main-item-date">{{ item.datum }}</div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Auszeichnungen -->
-              <div v-if="hasAnyAuszeichnung" class="main-section">
-                <h2>Auszeichnungen</h2>
-                <div
-                  v-for="item in sortedAuszeichnungen"
-                  :key="item.id"
-                  class="main-item"
-                  v-show="item.title || item.verliehen || item.datum"
-                >
-                  <div class="main-item-header">
-                    <div class="main-item-title-group">
-                      <h3 v-if="item.title">{{ item.title }}</h3>
-                      <div v-if="item.verliehen" class="main-item-subtitle">
-                        {{ item.verliehen }}
-                      </div>
-                    </div>
-                    <div v-if="item.datum" class="main-item-date">{{ item.datum }}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- A4 Template Component - COMPLETELY ISOLATED -->
+        <CVA4Template
+          ref="a4TemplateRef"
+          :personal-data="personalData"
+          :ausbildungen="ausbildungen"
+          :berufserfahrungen="berufserfahrungen"
+          :kurse="kurse"
+          :auszeichnungen="auszeichnungen"
+          :kenntnisse="kenntnisse"
+          :sprachen="sprachen"
+          :interessen="interessen"
+          @dark-mode-change="handleA4DarkModeChange"
+        />
       </div>
     </div>
   </div>
@@ -485,7 +161,7 @@ const hasAnyAuszeichnung = computed(() => {
   position: relative;
   width: 100%;
   height: 100%;
-  background: #f0f0f0;
+  background: transparent;
   overflow: hidden;
 }
 
@@ -503,6 +179,12 @@ const hasAnyAuszeichnung = computed(() => {
   padding: 8px 12px;
   border-radius: 25px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+.zoom-controls.dark {
+  background: #2d3748;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .zoom-btn {
@@ -539,12 +221,44 @@ const hasAnyAuszeichnung = computed(() => {
   background: #5a6268;
 }
 
+.theme-btn {
+  font-size: 16px;
+  padding: 6px 12px;
+  background: #f59e0b;
+}
+
+.theme-btn:hover {
+  background: #d97706;
+}
+
+.controls-divider {
+  width: 1px;
+  height: 24px;
+  background: #ddd;
+  margin: 0 5px;
+  transition: background-color 0.3s ease;
+}
+
+.zoom-controls.dark .controls-divider {
+  background: #4a5568;
+}
+
+.zoom-controls.dark button,
+.zoom-controls.dark .zoom-level {
+  color: #e2e8f0;
+  border-color: #4a5568;
+}
+
 .zoom-level {
   min-width: 50px;
   text-align: center;
   font-weight: 600;
   font-size: 13px;
   color: #333;
+}
+
+.zoom-controls.dark .zoom-level {
+  color: #e2e8f0;
 }
 
 /* Scrollable Container */
@@ -573,363 +287,6 @@ const hasAnyAuszeichnung = computed(() => {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
-/* Match PDF Template Styles */
-.cv-preview {
-  background: white;
-  font-family: 'Arial', 'Helvetica', sans-serif;
-  color: #000;
-  font-size: 11pt;
-  line-height: 1.4;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  /* A4 Format: 210mm x 297mm */
-  width: 210mm;
-  min-height: 297mm;
-}
-
-/* Theme Toggle Button */
-.theme-toggle {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  z-index: 10;
-  background: rgba(255, 255, 255, 0.9);
-  border: 2px solid #ddd;
-  border-radius: 20px;
-  padding: 8px 16px;
-  font-size: 10pt;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.theme-toggle:hover {
-  background: rgba(255, 255, 255, 1);
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.light-mode .theme-toggle {
-  background: rgba(44, 62, 80, 0.9);
-  color: white;
-  border-color: #2c3e50;
-}
-
-.light-mode .theme-toggle:hover {
-  background: rgba(44, 62, 80, 1);
-}
-
-/* Header */
-.cv-header {
-  background: #2c3e50;
-  color: white;
-  padding: 30px 40px;
-  flex-shrink: 0;
-  transition: all 0.3s ease;
-}
-
-.light-mode .cv-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.header-content {
-  display: flex;
-  align-items: center;
-  gap: 25px;
-}
-
-.header-photo {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.header-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.cv-header h1 {
-  margin: 0;
-  font-size: 32pt;
-  font-weight: 700;
-  letter-spacing: 1px;
-}
-
-/* Content Layout */
-.cv-content {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
-/* Linke Spalte (Sidebar) */
-.cv-sidebar {
-  width: 280px;
-  background: #f5f5f5;
-  padding: 30px 25px;
-  transition: all 0.3s ease;
-  overflow-y: auto;
-  flex-shrink: 0;
-}
-
-.light-mode .cv-sidebar {
-  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
-}
-
-.sidebar-section {
-  margin-bottom: 30px;
-}
-
-.sidebar-section h2 {
-  font-size: 13pt;
-  font-weight: 700;
-  color: #2c3e50;
-  margin: 0 0 15px 0;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #2c3e50;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  transition: all 0.3s ease;
-}
-
-.light-mode .sidebar-section h2 {
-  color: #667eea;
-  border-bottom-color: #667eea;
-}
-
-.sidebar-item {
-  margin-bottom: 15px;
-}
-
-.sidebar-label {
-  font-size: 9pt;
-  font-weight: 700;
-  color: #555;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-  letter-spacing: 0.3px;
-}
-
-.sidebar-value {
-  font-size: 10pt;
-  color: #000;
-  line-height: 1.4;
-  word-wrap: break-word;
-}
-
-.sidebar-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.sidebar-tag {
-  background: #2c3e50;
-  color: white;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 9pt;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.light-mode .sidebar-tag {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.sidebar-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.sidebar-list-item {
-  font-size: 10pt;
-  color: #000;
-  padding-left: 15px;
-  position: relative;
-  line-height: 1.4;
-}
-
-.sidebar-list-item::before {
-  content: '•';
-  position: absolute;
-  left: 0;
-  color: #2c3e50;
-  font-weight: 700;
-  transition: all 0.3s ease;
-}
-
-.light-mode .sidebar-list-item::before {
-  color: #667eea;
-}
-
-/* Sprachen mit Niveau-Balken */
-.language-items {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.language-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.language-name {
-  font-size: 10pt;
-  font-weight: 600;
-  color: #000;
-}
-
-.niveau-text {
-  font-size: 8pt;
-  font-weight: 400;
-  color: #999;
-}
-
-.language-level {
-  display: flex;
-  align-items: center;
-}
-
-.level-bars {
-  display: flex;
-  gap: 3px;
-  align-items: center;
-}
-
-.level-bar {
-  width: 28px;
-  height: 8px;
-  background: #e0e0e0;
-  border-radius: 2px;
-  transition: all 0.3s ease;
-}
-
-.level-bar.filled {
-  background: #2c3e50;
-}
-
-.light-mode .level-bar.filled {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.level-bar.native-bar {
-  background: #2c3e50;
-}
-
-.light-mode .level-bar.native-bar {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.level-bar.native-extra {
-  background: #dc3545;
-  width: 32px;
-  height: 9px;
-  border: 2px solid #dc3545;
-}
-
-.light-mode .level-bar.native-extra {
-  background: #dc3545;
-  border-color: #dc3545;
-}
-
-/* Hauptbereich */
-.cv-main {
-  flex: 1;
-  padding: 30px 40px;
-  overflow-y: auto;
-}
-
-.main-section {
-  margin-bottom: 30px;
-}
-
-.main-section h2 {
-  font-size: 16pt;
-  font-weight: 700;
-  color: #2c3e50;
-  margin: 0 0 20px 0;
-  padding-bottom: 8px;
-  border-bottom: 3px solid #2c3e50;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  transition: all 0.3s ease;
-}
-
-.light-mode .main-section h2 {
-  color: #667eea;
-  border-bottom-color: #667eea;
-}
-
-.main-item {
-  margin-bottom: 20px;
-}
-
-.main-item-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 8px;
-  gap: 15px;
-}
-
-.main-item-title-group {
-  flex: 1;
-}
-
-.main-item-title-group h3 {
-  font-size: 12pt;
-  font-weight: 700;
-  color: #000;
-  margin: 0 0 4px 0;
-}
-
-.main-item-subtitle {
-  font-size: 11pt;
-  color: #555;
-  font-style: italic;
-  margin: 0;
-}
-
-.main-item-date {
-  font-size: 10pt;
-  color: #666;
-  font-weight: 600;
-  white-space: nowrap;
-  background: #f0f0f0;
-  padding: 4px 12px;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-}
-
-.light-mode .main-item-date {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
-  color: #667eea;
-  font-weight: 700;
-}
-
-.main-item-description {
-  font-size: 10pt;
-  color: #333;
-  line-height: 1.6;
-  margin-top: 8px;
-  text-align: justify;
-}
-
-/* Responsive - deaktiviert für A4 Preview */
 @media print {
   .zoom-controls {
     display: none;
