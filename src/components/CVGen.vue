@@ -140,7 +140,6 @@ onMounted(() => {
     const data = JSON.parse(saved)
     // Wenn alte isDarkMode vorhanden ist, migriere zu SPA Dark Mode
     if (data.isDarkMode !== undefined && data.isSPADarkMode === undefined) {
-      console.log('Migriere alte Dark Mode Daten...')
       data.isSPADarkMode = false
       delete data.isDarkMode
       delete data.isCVDarkMode // Remove old CV dark mode
@@ -149,13 +148,11 @@ onMounted(() => {
   }
 
   loadFromLocalStorage()
-  console.log('Initial state - SPA Dark Mode:', isSPADark.value)
 })
 
 // Toggle SPA Dark Mode - for Navbar, Form, Preview-Section Background
 function toggleTheme() {
   isSPADark.value = !isSPADark.value
-  console.log('SPA Dark Mode toggled to:', isSPADark.value)
 }
 
 // CV Template handles its own dark mode internally - no function needed here

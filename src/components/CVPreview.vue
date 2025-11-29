@@ -37,7 +37,6 @@ const handleToggleA4Theme = () => {
 // Handle dark mode change event from A4 component
 const handleA4DarkModeChange = (value: boolean) => {
   a4DarkMode.value = value
-  console.log('🎨 CVPreview received A4 Dark Mode change:', value)
 }
 
 // Zoom und Pan State

@@ -18,7 +18,6 @@ onMounted(() => {
   const saved = localStorage.getItem('cv-a4-dark-mode')
   if (saved !== null) {
     isA4Dark.value = saved === 'true'
-    console.log('📂 Loaded A4 Dark Mode from localStorage:', isA4Dark.value)
   }
 })
 
@@ -27,7 +26,6 @@ const toggleA4Dark = () => {
   isA4Dark.value = !isA4Dark.value
   localStorage.setItem('cv-a4-dark-mode', String(isA4Dark.value))
   emit('darkModeChange', isA4Dark.value)
-  console.log('✨ A4 Template Dark Mode:', isA4Dark.value)
 }
 
 // Expose toggle method to parent
