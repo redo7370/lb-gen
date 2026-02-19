@@ -52,3 +52,29 @@ npm run test:unit
 ```sh
 npm run lint
 ```
+
+## New Features
+
+### PDF Export Improvements
+- Fixed an issue where content was rendered on the second page instead of the first.
+- Ensured content is aligned to the top of the page in the PDF export.
+- Sidebar and main content backgrounds now extend to the bottom of the A4 page.
+
+### Overflow Detection and Warnings
+- Added functionality to detect when content exceeds one page.
+- Highlighted overflowing elements in red in the preview.
+- Displayed a warning message to notify users about content overflow.
+
+### How to Use
+1. **Generate CV Preview**: Use the CV generator to create your CV and preview it in the application.
+2. **Check for Overflow**: If your content exceeds one page, the overflowing elements will be highlighted in red, and a warning message will appear.
+3. **Export to PDF**: Once the content fits within one page, click the export button to generate a PDF of your CV.
+
+### Development Notes
+- The `CVA4Template.vue` component includes the logic for overflow detection and emits an `overflow` event.
+- The `CVPreview.vue` component forwards the `overflow` event to the `CVGen.vue` component.
+- The `CVGen.vue` component handles the `overflow` event, displays the warning message, and manages the PDF export process.
+
+### Testing
+- Use `vue-tsc` to ensure all TypeScript files compile without errors.
+- Test the application in the browser to verify the new features and ensure the PDF export works as expected.
