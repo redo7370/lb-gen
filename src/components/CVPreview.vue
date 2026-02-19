@@ -5,6 +5,10 @@ import type { CVProps } from '@/composables/useCVData'
 
 const props = defineProps<CVProps>()
 
+const emit = defineEmits<{
+  overflow: [detected: boolean]
+}>()
+
 // Ref to A4 template component
 const a4TemplateRef = ref<InstanceType<typeof CVA4Template> | null>(null)
 
@@ -32,6 +36,11 @@ const handleToggleA4Theme = () => {
   if (a4TemplateRef.value) {
     a4TemplateRef.value.toggleA4Dark()
   }
+}
+
+// Handle overflow event from A4 component
+const handleOverflow = (detected: boolean) => {
+  emit('overflow', detected)
 }
 
 // Handle dark mode change event from A4 component
@@ -147,7 +156,10 @@ const handleWheel = (e: WheelEvent) => {
           :kenntnisse="kenntnisse"
           :sprachen="sprachen"
           :interessen="interessen"
+          :main-spacing="mainSpacing"
+          :sidebar-spacing="sidebarSpacing"
           @dark-mode-change="handleA4DarkModeChange"
+          @overflow="handleOverflow"
         />
       </div>
     </div>

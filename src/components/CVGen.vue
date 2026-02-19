@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
 import CVPreview from './CVPreview.vue'
-import CVPDFTemplate from './CVPDFTemplate.vue'
+import CVA4Template from './CVA4Template.vue'
 import html2pdf from 'html2pdf.js'
 import type {
   PersonalData,
@@ -29,6 +29,8 @@ const kenntnisse = ref('')
 const sprachen = ref<SprachItem[]>([])
 const interessen = ref('')
 const isSPADark = ref(false) // SPA Dark Mode ONLY - Navbar, Form, Preview Background
+const mainSpacing = ref(1) // Spacing multiplier for main content (0.2 - 1.5)
+const sidebarSpacing = ref(1) // Spacing multiplier for sidebar (0.2 - 1.5)
 
 let ausbildungCounter = 0
 let berufserfahrungCounter = 0
@@ -37,7 +39,14 @@ let auszeichnungenCounter = 0
 let sprachenCounter = 0
 
 const cvPreviewRef = ref<HTMLElement | null>(null)
-const cvPdfTemplateRef = ref<HTMLElement | null>(null)
+const cvPdfA4Ref = ref<InstanceType<typeof CVA4Template> | null>(null)
+const pdfContainerRef = ref<HTMLElement | null>(null)
+const isOverflowing = ref(false)
+
+// Handle overflow event from preview template
+function handleOverflow(detected: boolean) {
+  isOverflowing.value = detected
+}
 
 // LocalStorage Funktionen
 function loadFromLocalStorage() {
@@ -65,6 +74,10 @@ function loadFromLocalStorage() {
       // Texte
       kenntnisse.value = data.kenntnisse || ''
       interessen.value = data.interessen || ''
+
+      // Spacing
+      mainSpacing.value = data.mainSpacing ?? 1
+      sidebarSpacing.value = data.sidebarSpacing ?? 1
 
       // SPA Dark Mode only
       isSPADark.value = data.isSPADark ?? false
@@ -105,6 +118,8 @@ function saveToLocalStorage() {
       kenntnisse: kenntnisse.value,
       sprachen: sprachen.value,
       interessen: interessen.value,
+      mainSpacing: mainSpacing.value,
+      sidebarSpacing: sidebarSpacing.value,
       isSPADark: isSPADark.value, // Only SPA dark mode
     }
     localStorage.setItem('cv-data', JSON.stringify(data))
@@ -124,6 +139,8 @@ watch(
     kenntnisse,
     sprachen,
     interessen,
+    mainSpacing,
+    sidebarSpacing,
     isSPADark, // Only SPA Dark Mode
   ],
   () => {
@@ -319,25 +336,50 @@ function removeSprache(id: number) {
 }
 
 async function exportPDF() {
-  // Get the actual DOM element from the Vue component ref
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const vueComponent = cvPdfTemplateRef.value as any
-  const templateElement = vueComponent?.$el || vueComponent
+  // Use container ref to find the A4 template DOM element
+  const container = pdfContainerRef.value
+  if (!container) {
+    console.error('PDF container not found')
+    return
+  }
 
+  const templateElement = container.querySelector('.cv-a4-template') as HTMLElement | null
   if (!templateElement) {
     console.error('PDF Template Element not found')
     return
   }
 
-  // Temporarily make visible for rendering
-  const container = templateElement.closest('.pdf-container')
-  if (container) {
-    container.style.position = 'fixed'
-    container.style.left = '0'
-    container.style.top = '0'
-    container.style.visibility = 'visible'
-    container.style.zIndex = '-1'
-  }
+  // Make container visible for html2canvas rendering
+  container.style.position = 'fixed'
+  container.style.left = '0'
+  container.style.top = '0'
+  container.style.visibility = 'visible'
+  container.style.zIndex = '-1'
+  container.style.overflow = 'visible'
+  container.style.height = 'auto'
+
+  // For PDF: use min-height so backgrounds extend to bottom,
+  // but content starts at top (no gap)
+  templateElement.style.height = 'auto'
+  templateElement.style.minHeight = '297mm'
+  templateElement.style.overflow = 'hidden'
+  const cvContent = templateElement.querySelector('.cv-content') as HTMLElement | null
+  const cvSidebar = templateElement.querySelector('.cv-sidebar') as HTMLElement | null
+  const cvMain = templateElement.querySelector('.cv-main') as HTMLElement | null
+
+  // Remove overflow-item markers for clean PDF
+  templateElement.querySelectorAll('.overflow-item').forEach((item) => {
+    item.classList.remove('overflow-item')
+  })
+
+  // Wait for layout to settle
+  await new Promise((resolve) => requestAnimationFrame(resolve))
+  await new Promise((resolve) => setTimeout(resolve, 50))
+
+  // Calculate the A4 page height in pixels (based on rendered width)
+  const renderedWidth = templateElement.offsetWidth
+  const a4Ratio = 297 / 210
+  const pageHeightPx = renderedWidth * a4Ratio
 
   const opt = {
     margin: 0,
@@ -349,6 +391,8 @@ async function exportPDF() {
       letterRendering: true,
       scrollY: 0,
       scrollX: 0,
+      width: renderedWidth,
+      height: pageHeightPx,
     },
     jsPDF: {
       unit: 'mm' as const,
@@ -356,7 +400,6 @@ async function exportPDF() {
       orientation: 'portrait' as const,
       compress: true,
     },
-    pagebreak: { mode: ['avoid-all', 'css', 'legacy'], before: '.page-break' },
   }
 
   try {
@@ -365,14 +408,17 @@ async function exportPDF() {
     console.error('PDF Export Error:', error)
     alert('Fehler beim PDF-Export. Bitte versuchen Sie es erneut.')
   } finally {
-    // Hide again after rendering
-    if (container) {
-      container.style.position = 'absolute'
-      container.style.left = '-9999px'
-      container.style.top = '-9999px'
-      container.style.visibility = 'hidden'
-      container.style.zIndex = ''
-    }
+    // Restore styles
+    templateElement.style.height = ''
+    templateElement.style.minHeight = ''
+    templateElement.style.overflow = ''
+    container.style.position = 'absolute'
+    container.style.left = '-9999px'
+    container.style.top = '-9999px'
+    container.style.visibility = 'hidden'
+    container.style.zIndex = ''
+    container.style.overflow = ''
+    container.style.height = ''
   }
 }
 </script>
@@ -625,6 +671,19 @@ async function exportPDF() {
 
       <!-- Preview Section -->
       <div class="preview-section">
+        <div class="spacing-controls">
+          <div class="spacing-control">
+            <label>Hauptbereich Abstände: <strong>{{ Math.round(mainSpacing * 100) }}%</strong></label>
+            <input type="range" min="20" max="150" :value="mainSpacing * 100" @input="mainSpacing = Number(($event.target as HTMLInputElement).value) / 100" />
+          </div>
+          <div class="spacing-control">
+            <label>Seitenleiste Abstände: <strong>{{ Math.round(sidebarSpacing * 100) }}%</strong></label>
+            <input type="range" min="20" max="150" :value="sidebarSpacing * 100" @input="sidebarSpacing = Number(($event.target as HTMLInputElement).value) / 100" />
+          </div>
+        </div>
+        <div v-if="isOverflowing" class="overflow-warning">
+          ⚠️ Der Inhalt überschreitet eine A4-Seite! Die rot markierten Bereiche in der Vorschau werden im PDF abgeschnitten. Bitte Einträge kürzen/entfernen oder Abstände verkleinern.
+        </div>
         <button class="btn btn-export" @click="exportPDF">📥 Als PDF exportieren</button>
         <!-- CVPreview manages its own CV template dark mode internally -->
         <CVPreview
@@ -637,15 +696,18 @@ async function exportPDF() {
           :kenntnisse="kenntnisse"
           :sprachen="sprachen"
           :interessen="interessen"
+          :main-spacing="mainSpacing"
+          :sidebar-spacing="sidebarSpacing"
           :is-s-p-a-dark="isSPADark"
+          @overflow="handleOverflow"
         />
       </div>
     </div>
 
-    <!-- Hidden PDF Template for Export -->
-    <div class="pdf-container">
-      <CVPDFTemplate
-        ref="cvPdfTemplateRef"
+    <!-- Hidden A4 Template for PDF Export (identical to preview) -->
+    <div class="pdf-container" ref="pdfContainerRef">
+      <CVA4Template
+        ref="cvPdfA4Ref"
         :personal-data="personalData"
         :ausbildungen="ausbildungen"
         :berufserfahrungen="berufserfahrungen"
@@ -654,6 +716,8 @@ async function exportPDF() {
         :kenntnisse="kenntnisse"
         :sprachen="sprachen"
         :interessen="interessen"
+        :main-spacing="mainSpacing"
+        :sidebar-spacing="sidebarSpacing"
       />
     </div>
   </div>
@@ -1103,6 +1167,86 @@ async function exportPDF() {
   color: #f1f5f9;
 }
 
+/* Spacing Controls */
+.spacing-controls {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  transition: background-color 0.3s ease;
+}
+
+.container.dark-mode .spacing-controls {
+  background: #1e293b;
+}
+
+.spacing-control {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.spacing-control label {
+  font-size: 11px;
+  color: #475569;
+  transition: color 0.3s ease;
+}
+
+.container.dark-mode .spacing-control label {
+  color: #94a3b8;
+}
+
+.spacing-control strong {
+  color: #667eea;
+}
+
+.spacing-control input[type='range'] {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: #cbd5e0;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+.container.dark-mode .spacing-control input[type='range'] {
+  background: #475569;
+}
+
+.spacing-control input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #667eea;
+  cursor: pointer;
+}
+
+/* Overflow Warning */
+.overflow-warning {
+  background: #fef2f2;
+  border: 2px solid #dc3545;
+  color: #991b1b;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.container.dark-mode .overflow-warning {
+  background: #450a0a;
+  color: #fca5a5;
+  border-color: #dc3545;
+}
+
 @media (max-width: 968px) {
   .content {
     flex-direction: column;
@@ -1119,9 +1263,9 @@ async function exportPDF() {
   left: -9999px;
   top: -9999px;
   width: 210mm;
-  min-height: 297mm;
+  height: 297mm;
   visibility: hidden;
-  overflow: visible;
+  overflow: hidden;
   pointer-events: none;
 }
 </style>

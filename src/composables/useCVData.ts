@@ -56,6 +56,8 @@ export interface CVProps {
   interessen: string
   isA4Dark?: boolean // A4 template dark mode - managed internally by CVA4Template
   isSPADark?: boolean // SPA dark mode - for zoom controls styling only
+  mainSpacing?: number // Spacing multiplier for main content sections (0.2 - 1.5, default 1)
+  sidebarSpacing?: number // Spacing multiplier for sidebar sections (0.2 - 1.5, default 1)
 }
 
 /**
