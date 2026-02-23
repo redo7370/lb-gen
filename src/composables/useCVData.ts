@@ -8,6 +8,9 @@ export interface PersonalData {
   telefon: string
   email: string
   photoUrl: string
+  photoOffsetX?: number
+  photoOffsetY?: number
+  photoZoom?: number
 }
 
 export interface DynamicItem {

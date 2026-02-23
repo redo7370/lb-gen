@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUpdated, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUpdated, nextTick } from 'vue'
 import { useCVData, type CVProps } from '@/composables/useCVData'
 
 // Props - NO isSPADark accepted!
@@ -87,6 +87,12 @@ function checkOverflow() {
   })
 }
 
+// Computed style for photo positioning
+const photoStyle = computed(() => ({
+  objectPosition: `${props.personalData.photoOffsetX ?? 50}% ${props.personalData.photoOffsetY ?? 50}%`,
+  transform: `scale(${props.personalData.photoZoom ?? 1})`,
+}))
+
 // Use shared CV data logic
 const {
   geburtsText,
@@ -107,12 +113,18 @@ const {
 
 <template>
   <!-- A4 Sheet - Completely isolated from SPA dark mode -->
-  <div ref="templateRef" class="cv-a4-template" :class="{ 'dark-mode': isA4Dark }" :data-dark="isA4Dark" :style="spacingStyle">
+  <div
+    ref="templateRef"
+    class="cv-a4-template"
+    :class="{ 'dark-mode': isA4Dark }"
+    :data-dark="isA4Dark"
+    :style="spacingStyle"
+  >
     <!-- Header -->
     <div class="cv-header">
       <div class="header-content">
         <div v-if="personalData.photoUrl" class="header-photo">
-          <img :src="personalData.photoUrl" alt="Profilfoto" />
+          <img :src="personalData.photoUrl" alt="Profilfoto" :style="photoStyle" />
         </div>
         <h1>{{ personalData.name || 'Ihr Name' }}</h1>
       </div>
@@ -334,12 +346,13 @@ const {
 }
 
 .cv-a4-template .header-photo {
-  width: 80px;
-  height: 80px;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
   overflow: hidden;
   border: 3px solid rgba(255, 255, 255, 0.3);
   flex-shrink: 0;
+  margin: 0;
 }
 
 .cv-a4-template .header-photo img {
@@ -350,8 +363,9 @@ const {
 
 .cv-a4-template .cv-header h1 {
   margin: 0;
-  font-size: 28pt;
-  font-weight: 700;
+  font-size: 30pt;
+  font-weight: 800;
+  letter-spacing: 0.5px;
 }
 
 /* Content */
@@ -650,13 +664,13 @@ const {
   font-size: 7pt;
   color: #dc3545;
   font-weight: 700;
-  background: rgba(255,255,255,0.9);
+  background: rgba(255, 255, 255, 0.9);
   padding: 1px 4px;
   border-radius: 2px;
   z-index: 10;
 }
 
 .cv-a4-template.dark-mode .overflow-item::after {
-  background: rgba(26,26,26,0.9);
+  background: rgba(26, 26, 26, 0.9);
 }
 </style>
