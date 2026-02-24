@@ -640,7 +640,7 @@ const {
   font-size: 9pt;
   color: #334155;
   line-height: 1.5;
-  text-align: justify;
+  text-align: left;
   transition: color 0.3s ease;
 }
 
